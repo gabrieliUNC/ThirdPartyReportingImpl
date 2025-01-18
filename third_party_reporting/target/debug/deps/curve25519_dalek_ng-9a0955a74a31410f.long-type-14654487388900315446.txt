@@ -1,0 +1,1 @@
+core::iter::Map<<I as IntoIterator>::IntoIter, fn(&RistrettoPoint) -> BatchCompressState {<BatchCompressState as From<&RistrettoPoint>>::from}>
