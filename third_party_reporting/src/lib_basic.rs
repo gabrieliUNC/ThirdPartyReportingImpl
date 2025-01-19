@@ -42,7 +42,7 @@ impl Moderator {
 
         let keypair = PKey::from_rsa(sk_mod).unwrap();
         let mut decrypter = Decrypter::new(&keypair).unwrap();
-        decrypter.set_rsa_padding(Padding::PKCS1).unwrap();
+        decrypter.set_rsa_padding(Padding::PKCS1_OAEP).unwrap();
         let buffer_len = decrypter.decrypt_len(&sigma).unwrap();
         let mut sigma_pt = vec![0; buffer_len];
 
@@ -96,7 +96,7 @@ impl Platform {
 
         let keypair = PKey::from_rsa(mod_pk_i.clone()).unwrap();
         let mut encrypter = Encrypter::new(&keypair).unwrap();
-        encrypter.set_rsa_padding(Padding::PKCS1).unwrap();
+        encrypter.set_rsa_padding(Padding::PKCS1_OAEP).unwrap();
         let buffer_len = encrypter.encrypt_len(&sigma_pt).unwrap();
         
         let mut sigma = vec![0; buffer_len];
