@@ -8,8 +8,7 @@ use rand::thread_rng;
 
 fn main() {
 
-
-    test_basic(10, 10, 10);
+    test_basic(1000, 1000, 190);
 }
 
 // Basic scheme testing decomposition for benchmarking
@@ -24,6 +23,7 @@ pub fn test_basic_setup_platform() -> basic::Platform {
 
     platform
 }
+
 // SetupMod(pk_reg, 1^lambda)
 pub fn test_basic_setup_mod(mut platform: basic::Platform, num_moderators: usize) -> (basic::Platform, Vec<basic::Moderator>, Vec<Rsa<Public>>) {
     let mut moderators: Vec<basic::Moderator> = Vec::with_capacity(num_moderators);
@@ -39,6 +39,7 @@ pub fn test_basic_setup_mod(mut platform: basic::Platform, num_moderators: usize
 
     (platform, moderators, pks)
 }
+
 // Setup Clients
 pub fn test_basic_init_clients(num_clients: usize, msg_size: usize) -> (Vec<basic::Client>, Vec<String>) {
     let mut clients: Vec<basic::Client> = Vec::with_capacity(num_clients);
@@ -57,33 +58,26 @@ pub fn test_basic_init_clients(num_clients: usize, msg_size: usize) -> (Vec<basi
     (clients, ms)
 }
 
-
-pub fn test_basic(n: usize, msg_size: usize, num_moderators: usize) {
-    // Initialize platform
-    let platform = test_basic_setup_platform();
-
-    // Initialize Moderators
-    let (platform, moderators, pks) = test_basic_setup_mod(platform, num_moderators);
-
-    // Initialize Clients
-    let (clients, ms) = test_basic_init_clients(n, msg_size);
-
-    // Send messages
-    let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(n);
-
+// send(k, m, pk_i)
+pub fn test_basic_send(num_clients: usize, clients: &Vec<basic::Client>, ms: Vec<String>) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
+    let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(num_clients);
     // send message i to client i to be moderated by random mod
     let mut rng = thread_rng();
-    for i in 0..n {
+    for i in 0..num_clients {
         let mod_i = rng.gen_range(0..10);
         let (c1, c2, ad) = basic::Client::send(clients[i].msg_key, &ms[i].clone(), mod_i);
         
         c1c2ad.push((c1, c2, ad));
     }
 
+    c1c2ad
+}
 
-    let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(n);
+// process(k_p, ks, c1, c2, ad, ctx)
+pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &basic::Platform) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
+    let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
     // Platform processes message
-    for i in 0..n {
+    for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
         let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
         println!("Adding context: {}", ctx);
@@ -92,10 +86,15 @@ pub fn test_basic(n: usize, msg_size: usize, num_moderators: usize) {
         sigma_st.push((sigma, st));
     }
 
+    sigma_st
+}
+
+// read(k, pks, c1, c2, sigma, st)
+pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<basic::Client>, pks: &Vec<Rsa<Public>>) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> {
     // Receive messages
-    let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> = Vec::with_capacity(n);
-    // Receive message 0 from client 0 to be moderated by moderator 0
-    for i in 0..n {
+    let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> = Vec::with_capacity(num_clients);
+    // Receive message 0 from client 0 to be moderated by randomly selected moderator mod_i
+    for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
         let (sigma, st) = &sigma_st[i];
         let (message, ad, report) = basic::Client::read(clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
@@ -104,12 +103,42 @@ pub fn test_basic(n: usize, msg_size: usize, num_moderators: usize) {
         reports.push((message, ad, report));
     }
 
+    reports
+}
 
+// moderate(sk_mod, sk_p, m, report)
+pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))>, moderators: &Vec<basic::Moderator>) {
     // Moderate messages
-    for i in 0..n {
+    for i in 0..num_clients {
         let (message, ad, report) = &reports[i];
         let ad = usize::try_from(*ad).unwrap();
         let ctx = basic::Moderator::moderate(moderators[ad].sk_mod.clone(), moderators[ad].sk_p.clone(), &message, report.clone());
         println!("Moderated message successfully with context: {:?}", ctx);
     }
+
+}
+
+// Method for running the whole basic scheme flow with variable number of clients / msgs sent, msg_size, and 
+// number of moderators
+pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
+    // Initialize platform
+    let platform = test_basic_setup_platform();
+
+    // Initialize Moderators
+    let (platform, moderators, pks) = test_basic_setup_mod(platform, num_moderators);
+
+    // Initialize Clients
+    let (clients, ms) = test_basic_init_clients(num_clients, msg_size);
+
+    // Send messages
+    let c1c2ad = test_basic_send(num_clients, &clients, ms);
+
+    // Process messages
+    let sigma_st = test_basic_process(num_clients, msg_size, &c1c2ad, &platform);
+
+    // Read messages and generate reports
+    let reports = test_basic_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks);
+
+    // Moderate reports
+    test_basic_moderate(num_clients, &reports, &moderators);
 }
