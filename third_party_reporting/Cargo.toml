@@ -3,6 +3,12 @@ name = "third_party_reporting"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+
 [dependencies]
 aes-gcm = "0.10.3"
 openssl-sys = "0.9"
@@ -19,3 +25,16 @@ generic-array = "1.0.0"
 lazy_static = "1.4.0"
 crypto_box = { version = "0.9.1", features = ["seal"] }
 typenum = "1.17.0"
+criterion = "0.3"
+
+[[bench]]
+name = "basic_platform_setup"
+harness = false
+
+[[bench]]
+name = "basic_mod_setup"
+harness = false
+
+[[bench]]
+name = "basic_send"
+harness = false
