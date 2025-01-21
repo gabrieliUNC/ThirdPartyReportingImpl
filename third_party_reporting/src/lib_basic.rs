@@ -236,13 +236,13 @@ pub fn test_basic_init_messages(num_clients: usize, msg_size: usize) -> Vec<Stri
 }
 
 // send(k, m, pk_i)
-pub fn test_basic_send(num_clients: usize, clients: &Vec<Client>, ms: Vec<String>) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
+pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<Client>, ms: Vec<String>) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
     let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(num_clients);
     // send message i to client i to be moderated by random mod
     let mut rng = thread_rng();
     for i in 0..num_clients {
-        let mod_i = rng.gen_range(0..10);
-        let (c1, c2, ad) = Client::send(clients[i].msg_key, &ms[i].clone(), mod_i);
+        let mod_i = rng.gen_range(0..num_moderators);
+        let (c1, c2, ad) = Client::send(clients[i].msg_key, &ms[i].clone(), mod_i.try_into().unwrap());
         
         println!("Sent message: {}", &ms[i]);
         c1c2ad.push((c1, c2, ad));
