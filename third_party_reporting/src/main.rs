@@ -16,7 +16,10 @@ pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
     let (moderators, pks) = basic::test_basic_setup_mod(&mut platform, num_moderators);
 
     // Initialize Clients
-    let (clients, ms) = basic::test_basic_init_clients(num_clients, msg_size);
+    let clients = basic::test_basic_init_clients(num_clients);
+
+    // Prepare messages
+    let ms = basic::test_basic_init_messages(num_clients, msg_size);
 
     // Send messages
     let c1c2ad = basic::test_basic_send(num_clients, &clients, ms);

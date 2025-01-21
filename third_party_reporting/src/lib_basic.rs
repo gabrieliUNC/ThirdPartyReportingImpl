@@ -215,21 +215,24 @@ pub fn test_basic_setup_mod(platform: &mut Platform, num_moderators: usize) -> (
 }
 
 // Setup Clients
-pub fn test_basic_init_clients(num_clients: usize, msg_size: usize) -> (Vec<Client>, Vec<String>) {
+pub fn test_basic_init_clients(num_clients: usize) -> Vec<Client> {
     let mut clients: Vec<Client> = Vec::with_capacity(num_clients);
     for _i in 0..num_clients {
         let client = Client::new();
         clients.push(client);
     }
 
+    clients
+}
+// Setup Messages
+pub fn test_basic_init_messages(num_clients: usize, msg_size: usize) -> Vec<String> {
     // Prepare messages
     let mut ms: Vec<String> = Vec::with_capacity(num_clients);
     for _i in 0..num_clients {
         let m = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
         ms.push(m);
     }
-
-    (clients, ms)
+    ms
 }
 
 // send(k, m, pk_i)

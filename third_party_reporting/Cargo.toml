@@ -27,13 +27,15 @@ crypto_box = { version = "0.9.1", features = ["seal"] }
 typenum = "1.17.0"
 criterion = "0.3"
 
-[[bench]]
-name = "basic_platform_setup"
-harness = false
 
-[[bench]]
-name = "basic_mod_setup"
-harness = false
+#[[bench]]
+#name = "basic_platform_setup"
+#harness = false
+
+#[[bench]]
+#name = "basic_mod_setup"
+#harness = false
+
 
 [[bench]]
 name = "basic_send"
