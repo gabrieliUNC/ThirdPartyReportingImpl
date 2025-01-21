@@ -41,6 +41,10 @@ criterion = "0.3"
 #name = "basic_send"
 #harness = false
 
+#[[bench]]
+#name = "basic_process"
+#harness = false
+
 [[bench]]
-name = "basic_process"
+name = "basic_read"
 harness = false
