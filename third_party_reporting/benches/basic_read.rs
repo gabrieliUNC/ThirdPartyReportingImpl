@@ -50,6 +50,5 @@ pub fn bench_basic_read(c: &mut Criterion) {
     
     group.finish();
 }
-
 criterion_group!(benches, bench_basic_read);
 criterion_main!(benches);
