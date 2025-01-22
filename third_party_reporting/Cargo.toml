@@ -28,26 +28,26 @@ typenum = "1.17.0"
 criterion = "0.3"
 
 
-#[[bench]]
-#name = "basic_platform_setup"
-#harness = false
+[[bench]]
+name = "basic_platform_setup"
+harness = false
 
-#[[bench]]
-#name = "basic_mod_setup"
-#harness = false
+[[bench]]
+name = "basic_mod_setup"
+harness = false
 
 
-#[[bench]]
-#name = "basic_send"
-#harness = false
+[[bench]]
+name = "basic_send"
+harness = false
 
-#[[bench]]
-#name = "basic_process"
-#harness = false
+[[bench]]
+name = "basic_process"
+harness = false
 
-#[[bench]]
-#name = "basic_read"
-#harness = false
+[[bench]]
+name = "basic_read"
+harness = false
 
 
 [[bench]]
