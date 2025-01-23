@@ -22,14 +22,14 @@ pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
     let ms = basic::test_basic_init_messages(num_clients, msg_size);
 
     // Send messages
-    let c1c2ad = basic::test_basic_send(num_clients, num_moderators, &clients, ms);
+    let c1c2ad = basic::test_basic_send(num_clients, num_moderators, &clients, &ms, true);
 
     // Process messages
-    let sigma_st = basic::test_basic_process(num_clients, msg_size, &c1c2ad, &platform);
+    let sigma_st = basic::test_basic_process(num_clients, msg_size, &c1c2ad, &platform, true);
 
     // Read messages and generate reports
-    let reports = basic::test_basic_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks);
+    let reports = basic::test_basic_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
 
     // Moderate reports
-    basic::test_basic_moderate(num_clients, &reports, &moderators);
+    basic::test_basic_moderate(num_clients, &reports, &moderators, true);
 }

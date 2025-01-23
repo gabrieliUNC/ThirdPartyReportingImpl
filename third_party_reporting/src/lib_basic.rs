@@ -17,7 +17,6 @@ use rand::Rng;
 const RSA_MODULUS: u32 = 2048;
 
 
-
 // Moderator Properties
 pub struct Moderator {
     pub sk_p: [u8; 32], // Mac Key shared with the Platform
@@ -48,7 +47,7 @@ impl Moderator {
         self.pk_mod.clone()
     }
 
-    pub fn moderate(keypair: PKey<Private>, sk_p: [u8; 32], message: &str, report: ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) -> String {
+    pub fn moderate(keypair: &PKey<Private>, sk_p: &[u8; 32], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) -> String {
         let (k_f, c2, ctx, sigma) = report;
 
 
@@ -61,7 +60,7 @@ impl Moderator {
         sigma_pt.truncate(len);
 
         // Verify committment
-        assert!(com_open(&c2, message, &k_f));
+        assert!(com_open(&c2, message, k_f));
 
         // Verify signature
         assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), sigma_pt));
@@ -99,7 +98,7 @@ impl Platform {
         (self.k_p.clone(), self.k_reg.clone())
     }
 
-    pub fn process(_k_p: Option<Vec<u8>>, ks: &Vec<([u8; 32], PKey<Public>)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Vec<u8>, (Vec<u8>, u32)) {
+    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], PKey<Public>)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Vec<u8>, (Vec<u8>, u32)) {
         let moderator_id: usize = ad.try_into().unwrap();
         let (mac_key_i, mod_pk_i) = &ks[moderator_id];
         let sigma_pt = mac_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
@@ -134,7 +133,7 @@ impl Client {
         }
     }
 
-    pub fn ccae_enc(msg_key: Key<Aes256Gcm>, message: &str) -> (Vec<u8>, Vec<u8>) {
+    pub fn ccae_enc(msg_key: &Key<Aes256Gcm>, message: &str) -> (Vec<u8>, Vec<u8>) {
         let k_f: [u8; 32] = mac_keygen(); // franking key or r in H(m, r) for committment
         
         let c2 = com_commit(&k_f, message);
@@ -149,7 +148,7 @@ impl Client {
         (c1, c2)
     }
 
-    pub fn ccae_dec(msg_key: Key<Aes256Gcm>, c1: &Vec<u8>, c2: &Vec<u8>) -> (String, [u8; 32]) {
+    pub fn ccae_dec(msg_key: &Key<Aes256Gcm>, c1: &Vec<u8>, c2: &Vec<u8>) -> (String, [u8; 32]) {
         let c1_obj = bincode::deserialize::<(Vec<u8>, Vec<u8>)>(&c1).unwrap();
         let ct = c1_obj.0;
         let nonce = Nonce::from_slice(&c1_obj.1);
@@ -166,13 +165,13 @@ impl Client {
         (message.to_string(), k_f)
     }
 
-    pub fn send(msg_key: Key<Aes256Gcm>, message: &str, moderator_id: u32) -> (Vec<u8>, Vec<u8>, u32) {
+    pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32) -> (Vec<u8>, Vec<u8>, u32) {
         let (c1, c2) = Self::ccae_enc(msg_key, message);       
 
         (c1, c2, moderator_id)
     }
     
-    pub fn read(msg_key: Key<Aes256Gcm>, _pks: &Vec<PKey<Public>>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Vec<u8>, st: &(Vec<u8>, u32)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, _pks: &Vec<PKey<Public>>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Vec<u8>, st: &(Vec<u8>, u32)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) {
         let (ctx, ad) = st;
 
         let (message, k_f) = Self::ccae_dec(msg_key, c1, c2);
@@ -236,15 +235,17 @@ pub fn test_basic_init_messages(num_clients: usize, msg_size: usize) -> Vec<Stri
 }
 
 // send(k, m, pk_i)
-pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<Client>, ms: Vec<String>) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
+pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<Client>, ms: &Vec<String>, print: bool) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
     let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(num_clients);
     // send message i to client i to be moderated by random mod
     let mut rng = thread_rng();
     for i in 0..num_clients {
         let mod_i = rng.gen_range(0..num_moderators);
-        let (c1, c2, ad) = Client::send(clients[i].msg_key, &ms[i].clone(), mod_i.try_into().unwrap());
+        let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap());
         
-        println!("Sent message: {}", &ms[i]);
+        if print {
+            println!("Sent message: {}", &ms[i]);
+        }
         c1c2ad.push((c1, c2, ad));
     }
 
@@ -252,14 +253,16 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
 }
 
 // process(k_p, ks, c1, c2, ad, ctx)
-pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
+pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform, print: bool) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
     let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
     // Platform processes message
     for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
         let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
-        println!("Adding context: {}", ctx);
-        let (sigma, st) = Platform::process(platform.k_p.clone(), &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
+        if print {
+            println!("Adding context: {}", ctx);
+        }
+        let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
 
         sigma_st.push((sigma, st));
     }
@@ -268,16 +271,18 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
 }
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<PKey<Public>>) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> {
+pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<PKey<Public>>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> {
     // Receive messages
     let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> = Vec::with_capacity(num_clients);
     // Receive message 0 from client 0 to be moderated by randomly selected moderator mod_i
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
         let (sigma, st) = &sigma_st[i];
-        let (message, ad, report) = Client::read(clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
+        let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
-        println!("Received message: {}", message);
+        if print {
+            println!("Received message: {}", message);
+        }
         reports.push((message, ad, report));
     }
 
@@ -285,13 +290,15 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
 }
 
 // moderate(sk_mod, sk_p, m, report)
-pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))>, moderators: &Vec<Moderator>) {
+pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))>, moderators: &Vec<Moderator>, print: bool) {
     // Moderate messages
     for i in 0..num_clients {
         let (message, ad, report) = &reports[i];
         let ad = usize::try_from(*ad).unwrap();
-        let ctx = Moderator::moderate(moderators[ad].keypair.clone(), moderators[ad].sk_p.clone(), &message, report.clone());
-        println!("Moderated message successfully with context: {:?}", ctx);
+        let ctx = Moderator::moderate(&moderators[ad].keypair, &moderators[ad].sk_p, &message, &report);
+        if print {
+            println!("Moderated message successfully with context: {:?}", ctx);
+        }
     }
 
 }
