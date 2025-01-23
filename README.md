@@ -13,3 +13,6 @@ To run the entire flow of any of the schemes, run the `main.rs` file using `carg
 ## Benchmarking
 All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs)
 - Run `cargo bench` to run all benchmarks
+
+## Basic Scheme
+This scheme uses AesGcm256 and HmacSha256 to provide Compactly Committing Authenticated Encryption on user messages. It also uses el gamal to provide CPA security for the server signature on the message committment.
