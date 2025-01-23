@@ -3,61 +3,44 @@ use aes_gcm::{
     Aes256Gcm, Nonce, Key
 };
 use bincode;
-use openssl::encrypt::{Encrypter, Decrypter};
-use openssl::rsa::{Rsa, Padding};
-use openssl::pkey::PKey;
-use openssl::pkey::{Private, Public};
 use crate::lib_common::*;
+use crate::lib_gamal as gamal;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::distributions::DistString;
 use rand::Rng;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
 
-// Global constants
-const RSA_MODULUS: u32 = 2048;
+type Point = RistrettoPoint;
+type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+use generic_array::typenum::U12;
 
 
 // Moderator Properties
 pub struct Moderator {
     pub sk_p: [u8; 32], // Mac Key shared with the Platform
-    pub keypair: PKey<Private>, // Moderator Encryption key pair
-    pub pk_mod: Option<PKey<Public>> // Moderator public key
+    pub sk_enc: Scalar, // Moderator private key
+    pub pk_enc: Point // Moderator public key
 }
 
 // Moderator Implementation 
 impl Moderator {
     // SetupMod(pk_reg, 1^lambda)
     pub fn new(_pk_reg: &Option<Vec<u8>>) -> Moderator {
-        let rsa = Rsa::generate(RSA_MODULUS).unwrap();
-        let pkey = PKey::from_rsa(rsa).unwrap();
+        let keys = gamal::elgamal_keygen();
         Moderator {
             sk_p: mac_keygen(),
-            keypair: pkey,
-            pk_mod: None
+            sk_enc: keys.0,
+            pk_enc: keys.1
         }
     }
 
-    // lazy init of public key
-    // to provide users with public key on demand
-    pub fn get_public_key(&mut self) -> Option<PKey<Public>> {
-        if self.pk_mod.is_none() {
-            self.pk_mod = Some(PKey::public_key_from_pem(&(self.keypair.public_key_to_pem().unwrap())).unwrap());
-        }
+    pub fn moderate(sk_enc: &Scalar, sk_p: &[u8; 32], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) -> String {
+        let (k_f, c2, ctx, ct) = report;
+        let (el_gamal_ct, sigma, nonce) = ct;
 
-        self.pk_mod.clone()
-    }
-
-    pub fn moderate(keypair: &PKey<Private>, sk_p: &[u8; 32], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) -> String {
-        let (k_f, c2, ctx, sigma) = report;
-
-
-        let mut decrypter = Decrypter::new(&keypair).unwrap();
-        decrypter.set_rsa_padding(Padding::PKCS1_OAEP).unwrap();
-        let buffer_len = decrypter.decrypt_len(&sigma).unwrap();
-        let mut sigma_pt = vec![0; buffer_len];
-
-        let len: usize = decrypter.decrypt(&sigma, &mut sigma_pt).unwrap();
-        sigma_pt.truncate(len);
+        let sigma_pt = gamal::decrypt(*sk_enc, (*el_gamal_ct, sigma.to_vec()), *nonce);
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
@@ -78,7 +61,7 @@ pub struct Platform {
                   // Integer mod Z_q
     pub k_reg: Option<Vec<u8>>, // Registration key also used for proxy re-encyrption
                // Group element in G_2
-    pub sk_p: Vec<([u8; 32], PKey<Public>)> // Vector of Moderator keys accessible to the Platform
+    pub sk_p: Vec<([u8; 32], Point)> // Vector of Moderator keys accessible to the Platform
 }
 
 // Platform Implementation
@@ -87,7 +70,7 @@ impl Platform {
         Platform {
             k_p: None,
             k_reg: None,
-            sk_p: Vec::<([u8; 32], PKey<Public>)>::new()
+            sk_p: Vec::<([u8; 32], Point)>::new()
         }
     }
 
@@ -98,23 +81,15 @@ impl Platform {
         (self.k_p.clone(), self.k_reg.clone())
     }
 
-    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], PKey<Public>)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Vec<u8>, (Vec<u8>, u32)) {
+    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Ciphertext, (Vec<u8>, u32)) {
         let moderator_id: usize = ad.try_into().unwrap();
         let (mac_key_i, mod_pk_i) = &ks[moderator_id];
         let sigma_pt = mac_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
-
-        let mut encrypter = Encrypter::new(&mod_pk_i).unwrap();
-        encrypter.set_rsa_padding(Padding::PKCS1_OAEP).unwrap();
-        let buffer_len = encrypter.encrypt_len(&sigma_pt).unwrap();
-        
-        let mut sigma = vec![0; buffer_len];
-
-        let len = encrypter.encrypt(&sigma_pt, &mut sigma).unwrap();
-        sigma.truncate(len);
+        let ct = gamal::encrypt(*mod_pk_i, sigma_pt);
 
 
-        (sigma, (ctx.to_vec(), ad))
+        (ct, (ctx.to_vec(), ad))
     }
 
 }
@@ -171,12 +146,12 @@ impl Client {
         (c1, c2, moderator_id)
     }
     
-    pub fn read(msg_key: &Key<Aes256Gcm>, _pks: &Vec<PKey<Public>>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Vec<u8>, st: &(Vec<u8>, u32)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>)) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, _pks: &Vec<Point>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, u32)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) {
         let (ctx, ad) = st;
 
         let (message, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
-        let report: ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>) = (k_f, c2.clone(), ctx.clone(), sigma.clone());
+        let report: ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = (k_f, c2.clone(), ctx.clone(), sigma.clone());
 
 
         (message, *ad, report)
@@ -198,14 +173,14 @@ pub fn test_basic_setup_platform() -> Platform {
 }
 
 // SetupMod(pk_reg, 1^lambda)
-pub fn test_basic_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Moderator>, Vec<PKey<Public>>) {
+pub fn test_basic_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Moderator>, Vec<Point>) {
     let mut moderators: Vec<Moderator> = Vec::with_capacity(num_moderators);
-    let mut pks: Vec<PKey<Public>> = Vec::with_capacity(num_moderators);
+    let mut pks: Vec<Point> = Vec::with_capacity(num_moderators);
 
     for _i in 0..num_moderators {
-        let mut moderator = Moderator::new(&platform.k_reg);
-        platform.sk_p.push((moderator.sk_p.clone(), moderator.get_public_key().expect("")));
-        pks.push(moderator.get_public_key().expect(""));
+        let moderator = Moderator::new(&platform.k_reg);
+        platform.sk_p.push((moderator.sk_p.clone(), moderator.pk_enc.clone()));
+        pks.push(moderator.pk_enc.clone());
         moderators.push(moderator);
     }
 
@@ -253,8 +228,8 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
 }
 
 // process(k_p, ks, c1, c2, ad, ctx)
-pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform, print: bool) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
-    let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
+pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform, print: bool) -> Vec<(Ciphertext, (Vec<u8>, u32))> {
+    let mut sigma_st: Vec<(Ciphertext, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
     // Platform processes message
     for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
@@ -271,9 +246,9 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
 }
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<PKey<Public>>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> {
+pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
     // Receive messages
-    let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))> = Vec::with_capacity(num_clients);
+    let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> = Vec::with_capacity(num_clients);
     // Receive message 0 from client 0 to be moderated by randomly selected moderator mod_i
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
@@ -290,12 +265,12 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
 }
 
 // moderate(sk_mod, sk_p, m, report)
-pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>))>, moderators: &Vec<Moderator>, print: bool) {
+pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))>, moderators: &Vec<Moderator>, print: bool) {
     // Moderate messages
     for i in 0..num_clients {
         let (message, ad, report) = &reports[i];
         let ad = usize::try_from(*ad).unwrap();
-        let ctx = Moderator::moderate(&moderators[ad].keypair, &moderators[ad].sk_p, &message, &report);
+        let ctx = Moderator::moderate(&moderators[ad].sk_enc, &moderators[ad].sk_p, &message, &report);
         if print {
             println!("Moderated message successfully with context: {:?}", ctx);
         }

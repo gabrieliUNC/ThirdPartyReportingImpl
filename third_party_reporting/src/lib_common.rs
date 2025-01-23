@@ -1,7 +1,6 @@
 use hmac::{Hmac, Mac};
-use rand::RngCore;
-use rand_core;
 use sha2::Sha256;
+use rand_core::RngCore;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -48,3 +47,4 @@ pub(crate) fn mac_verify(k: &[u8; 32], m: &Vec<u8>, sigma: Vec<u8>) -> bool {
 
     valid
 }
+
