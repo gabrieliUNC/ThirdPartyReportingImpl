@@ -19,3 +19,8 @@ All benchmarks are located in the `benches` folder. Benchmarking is done using [
 - Aes256Gcm
 - HmacSha256
 - El Gamal
+- Compactly Committing Authenticated Encryption [CCAE](https://eprint.iacr.org/2022/1670)
+
+## Moderator Privacy Scheme
+- All basic scheme primitives
+- El Gamal Proxy Re-Encryption [Improved Proxy Re-Enc](https://eprint.iacr.org/2005/028.pdf) and [Atomic Proxy Crypto](https://www.researchgate.net/publication/2581968_Atomic_Proxy_Cryptography)
