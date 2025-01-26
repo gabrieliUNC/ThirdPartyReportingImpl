@@ -10,12 +10,70 @@ use aes_gcm::{
     Aes256Gcm, Nonce
 };
 
+
+type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
 type Point = RistrettoPoint;
 
+// Proxy Re-Encryption El Gamal Scheme
+pub(crate) fn pre_elgamal_enc(pk: Point, m: Point) -> Ciphertext {
+    let r = Scalar::random(&mut OsRng);
+    let c1 = &r * G + m;
+    let c2 = &r * pk;
+
+    (c1, c2) // (g^(r) * m, g^(x*r)
+}
+
+pub(crate) fn pre_enc(pk: Point, m: Vec<u8>) -> (Ciphertext, Vec<u8>, Nonce<U12>) {
+    // Choose random point p to encrypt with ElGamal. H(p) is the symmetric key
+    // (we model H as a random oracle)
+    let p = Point::random(&mut OsRng);
+    let ct = pre_elgamal_enc(pk, p);
+
+    let pt = m;
+
+    let mut hasher = Sha256::new();
+    Digest::update(&mut hasher, pzip(p));
+    let k = hasher.finalize();
+
+    let cipher = Aes256Gcm::new(&k);
+    let nonce = Aes256Gcm::generate_nonce(&mut rngs::OsRng);
+    let sym_ct = cipher.encrypt(&nonce, pt.as_slice());
+
+    let sym_ct = match sym_ct {
+        Ok(ct) => ct,
+        Err(_) => panic!("Symmetric encryption failed")
+    };
+
+
+    (ct, sym_ct, nonce)
+}
+
+pub(crate) fn pre_re_enc(ct: Ciphertext, rk: Scalar) -> Ciphertext {
+    (ct.0, &rk * ct.1) // (m * g^r, g^((x*r*s) * y * 1/(x*s)))
+}
+
+pub(crate) fn pre_elgamal_dec(sk: Scalar, ct: Ciphertext) -> Point {
+    ct.0 - (ct.1 * sk.invert()) // g^r * m / g^((y*r)*(1/y))
+}
+
+
+pub(crate) fn pre_dec(sk: Scalar, ct: (Ciphertext, Vec<u8>), nonce: Nonce<U12>) -> Vec<u8> {
+    let p = pre_elgamal_dec(sk, ct.0);
+
+    let mut hasher = Sha256::new();
+    Digest::update(&mut hasher, pzip(p));
+    let k = hasher.finalize();
+
+    let cipher = Aes256Gcm::new(&k);
+    let pt = cipher.decrypt(&nonce, ct.1.as_ref()).ok();
+
+    let m: Vec<u8> = pt.unwrap();
+
+    m
+}
 
 // El Gamal Scheme
-type Ciphertext = (Point, Point);
 
 pub(crate) const G: &RistrettoBasepointTable = &constants::RISTRETTO_BASEPOINT_TABLE;
 
@@ -46,7 +104,7 @@ pub(crate) fn elgamal_enc(pk: Point, m: Point) -> Ciphertext {
 //      ct:  a compressed (Point, Point) ciphertext
 // Returns the decrypted chosen mask
 pub(crate) fn elgamal_dec(sk: Scalar, ct: Ciphertext) -> Point {
-    ct.1 + (Scalar::zero() - sk) * ct.0
+    ct.1 + (Scalar::zero() - sk) * ct.0 // m * g^(x*r) / g^(r/x)
 }
 
 pub(crate) fn encrypt(pk: Point, m: Vec<u8>) -> (Ciphertext, Vec<u8>, Nonce<U12>) {
