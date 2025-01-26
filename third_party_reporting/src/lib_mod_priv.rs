@@ -320,7 +320,7 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
 pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, Point))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
     // Receive messages
     let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> = Vec::with_capacity(num_clients);
-    // Receive message 0 from client 0 to be moderated by randomly selected moderator mod_i
+    // Receive message i from client i to be moderated by randomly selected moderator mod_i
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
         let (sigma, st) = &sigma_st[i];
