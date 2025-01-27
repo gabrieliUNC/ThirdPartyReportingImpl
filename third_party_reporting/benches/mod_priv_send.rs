@@ -23,7 +23,7 @@ pub fn mod_priv_send(c: &mut Criterion) {
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             group.bench_with_input(format!("Sent message of size {} with {} moderators", msg_size, num_moderators), msg_size, |b, &_msg_size| {
-                b.iter(|| mod_priv::Client::send(&clients[0].msg_key, &ms[i][0], i.try_into().unwrap(), &pks[i][0]))
+                b.iter(|| mod_priv::Client::send(&clients[0].msg_key, &ms[j][0], i.try_into().unwrap(), &pks[i][0]))
             });
         }
     }

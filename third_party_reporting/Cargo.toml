@@ -66,3 +66,15 @@ harness = false
 [[bench]]
 name = "mod_priv_send"
 harness = false
+
+[[bench]]
+name = "mod_priv_process"
+harness = false
+
+[[bench]]
+name = "mod_priv_read"
+harness = false
+
+[[bench]]
+name = "mod_priv_moderate"
+harness = false
