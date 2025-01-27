@@ -19,6 +19,7 @@ Options:
   -h, --help                             Print help
   -V, --version                          Print version
 ```
+For example `cargo run -- --basic --mod-priv --num-clients 20 --msg-size 30` runs the basic scheme and moderator privacy scheme with 20 clients and a message size of 30 bytes.
 
 ## Benchmarking
 All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs)
