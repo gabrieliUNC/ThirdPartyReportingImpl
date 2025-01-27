@@ -5,10 +5,20 @@ This is the implementation and benchmarking of [Third Party Reporting](https://g
 Each scheme is separated into an individual `lib_{scheme}.rs` file following a common interface as outlined in the above paper. In additition, testing follows a configurable flow that can be used to verify that the scheme works with an arbitrary number of clients, moderators, and message sizes. Benchmarking is done through [Criterion](https://github.com/bheisler/criterion.rs) for each method from each of the schemes and is also parameterized by the same variables as testing. 
 
 ## Testing
-To run the entire flow of any of the schemes, run the `main.rs` file using `cargo run` with the appropriate parameters (no cli yet, just uncomment what you want to run in main.rs)
-- test_basic for the basic scheme
-- test_mod_priv for the moderator privacy scheme
-- test_constant_mod_priv for the moderator privacy scheme with constant size tags
+To run the entire flow of any of the schemes, run the `main.rs` file using `cargo run` with the appropriate parameters 
+```
+Usage: third_party_reporting [OPTIONS]
+
+Options:
+      --basic
+      --mod-priv
+      --constant-mod-priv
+      --num-clients <NUM_CLIENTS>        [default: 10]
+      --num-moderators <NUM_MODERATORS>  [default: 10]
+      --msg-size <MSG_SIZE>              [default: 10]
+  -h, --help                             Print help
+  -V, --version                          Print version
+```
 
 ## Benchmarking
 All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs)
