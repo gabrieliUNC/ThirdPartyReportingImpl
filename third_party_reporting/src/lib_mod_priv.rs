@@ -18,6 +18,7 @@ type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
+const MOD_SCALE: [u8; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
 
 // Moderator Properties
 pub struct Moderator {
@@ -152,7 +153,7 @@ impl Client {
         (message.to_string(), moderator_id, k_f, k_r)
     }
 
-    pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: PublicKey) -> (Vec<u8>, Vec<u8>, Point) {
+    pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: &PublicKey) -> (Vec<u8>, Vec<u8>, Point) {
         let (pk1, _pk2, k1_2) = pk_i;
         let s: Scalar = Scalar::random(&mut OsRng);
         let pk = &s * pk1;
@@ -163,11 +164,11 @@ impl Client {
         (c1, c2, pk)
     }
     
-    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<Point>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, Point)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, Point)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) {
         let (ctx, pk) = st;
         let (message, moderator_id, k_f, k_r) = Self::ccae_dec(msg_key, c1, c2);
 
-        let pk2 = pks[usize::try_from(moderator_id).unwrap()];
+        let pk2 = pks[usize::try_from(moderator_id).unwrap()].1;
 
         // Ensure this message is reportable
         assert!((&k_r * pk) == pk2);
@@ -236,19 +237,40 @@ pub fn test_setup_platform() -> Platform {
 
 
 // SetupMod(pk_reg, 1^lambda)
-pub fn test_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Moderator>, Vec<Point>) {
+pub fn test_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Moderator>, Vec<PublicKey>) {
     let mut moderators: Vec<Moderator> = Vec::with_capacity(num_moderators);
-    let mut pks: Vec<Point> = Vec::with_capacity(num_moderators);
+    let mut pks: Vec<PublicKey> = Vec::with_capacity(num_moderators);
 
     for _i in 0..num_moderators {
         let moderator = Moderator::new(&platform.k_reg);
         platform.sk_p.push((moderator.sk_p.clone(), moderator.pk_enc_2.clone()));
-        pks.push(moderator.pk_enc_2.clone());
+        pks.push((moderator.pk_enc_1.clone(), moderator.pk_enc_2.clone(), moderator.k1_2.clone()));
         moderators.push(moderator);
     }
 
 
     (moderators, pks)
+}
+
+pub fn test_setup() -> (Vec<Platform>, Vec<Vec<Moderator>>, Vec<Vec<PublicKey>>) {
+    let n: usize = usize::try_from(MOD_SCALE.len()).unwrap();
+    let mut platforms: Vec<Platform> = Vec::with_capacity(n);
+    
+    for _i in 0..n {
+        platforms.push(Platform::new());
+    }
+    
+    let mut moderators: Vec<Vec<Moderator>> = Vec::with_capacity(n);
+    let mut pubs: Vec<Vec<PublicKey>> = Vec::new();
+
+    for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
+        let k = usize::try_from(*num_moderators).unwrap();
+        let (mods, pks) = test_setup_mod(&mut platforms[i], k);
+        moderators.push(mods);
+        pubs.push(pks);
+    }
+
+    (platforms, moderators, pubs)
 }
 
 
@@ -285,7 +307,7 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
         let mod_i = rng.gen_range(0..num_moderators);
         let mod_ref = &moderators[usize::try_from(mod_i).unwrap()];
         let pki: PublicKey = (mod_ref.pk_enc_1.clone(), mod_ref.pk_enc_2.clone(), mod_ref.k1_2.clone());
-        let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap(), pki);
+        let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap(), &pki);
         
         if print {
             println!("Sent message: {}", &ms[i]);
@@ -317,7 +339,7 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
 
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, Point))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
+pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, Point))>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
     // Receive messages
     let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> = Vec::with_capacity(num_clients);
     // Receive message i from client i to be moderated by randomly selected moderator mod_i
