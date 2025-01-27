@@ -153,7 +153,7 @@ impl Client {
     }
 
     pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: PublicKey) -> (Vec<u8>, Vec<u8>, Point) {
-        let (pk1, pk2, k1_2) = pk_i;
+        let (pk1, _pk2, k1_2) = pk_i;
         let s: Scalar = Scalar::random(&mut OsRng);
         let pk = &s * pk1;
         let k_r = k1_2 * s.invert();

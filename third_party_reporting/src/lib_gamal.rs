@@ -2,7 +2,7 @@ extern crate rand_core;
 use rand_core::OsRng;
 use sha2::{Sha256, Digest};
 use curve25519_dalek::constants;
-use curve25519_dalek::ristretto::{RistrettoPoint, RistrettoBasepointTable, CompressedRistretto};
+use curve25519_dalek::ristretto::{RistrettoPoint, RistrettoBasepointTable};
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs;
 use aes_gcm::{
@@ -79,10 +79,6 @@ pub(crate) const G: &RistrettoBasepointTable = &constants::RISTRETTO_BASEPOINT_T
 
 pub(crate) fn pzip(p: Point) -> [u8; 32] {
     p.compress().to_bytes()
-}
-
-pub(crate) fn puzip(p: [u8; 32]) -> Point {
-    CompressedRistretto::from_slice(&p).decompress().unwrap()
 }
 
 pub(crate) fn elgamal_keygen() -> (Scalar, Point) {
