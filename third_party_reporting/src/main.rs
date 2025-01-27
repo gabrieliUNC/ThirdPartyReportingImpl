@@ -35,7 +35,6 @@ fn main() {
         test_priv(args.num_clients, args.msg_size, args.num_moderators);
     }
 
-    // basic::test_proxy();
 }
 
 
