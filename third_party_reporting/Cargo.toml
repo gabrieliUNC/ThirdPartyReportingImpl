@@ -26,6 +26,7 @@ lazy_static = "1.4.0"
 crypto_box = { version = "0.9.1", features = ["seal"] }
 typenum = "1.17.0"
 criterion = { version = "0.4.0", features = ["html_reports"] }
+clap = { version = "4.5.27", features = ["derive"] }
 
 
 [[bench]]
