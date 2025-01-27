@@ -35,7 +35,7 @@ pub fn bench_basic_process(c: &mut Criterion) {
         c1c2ad.push(basic::test_basic_send(1, 1, &clients, &ms[i], false));
     }
 
-    let mut group = c.benchmark_group("process(k_p, ks, c1, c2, ad, ctx)");
+    let mut group = c.benchmark_group("basic.process(k_p, ks, c1, c2, ad, ctx)");
     for (i, msg_size) in LOG_SCALE.iter().enumerate() {
         group.bench_with_input(format!("Processed message of size {}", msg_size), msg_size, |b, &_msg_size| {
             b.iter(|| process(&platform, &c1c2ad[i]))

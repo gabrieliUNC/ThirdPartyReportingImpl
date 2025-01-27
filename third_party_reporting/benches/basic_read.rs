@@ -43,7 +43,7 @@ pub fn bench_basic_read(c: &mut Criterion) {
         sigma_st.push(basic::test_basic_process(1, *msg_size, &c1c2ad[i], &platform, false));
     }
 
-    let mut group = c.benchmark_group("read(k, pks, c1, c2, sigma, st)");
+    let mut group = c.benchmark_group("basic.read(k, pks, c1, c2, sigma, st)");
     for (i, msg_size) in LOG_SCALE.iter().enumerate() {
         group.bench_with_input(format!("Read message of size {}", msg_size), msg_size, |b, &_msg_size| {
             b.iter(|| read(&clients, &c1c2ad[i], &pks, &sigma_st[i]))

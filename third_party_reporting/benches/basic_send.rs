@@ -13,7 +13,7 @@ pub fn bench_basic_send(c: &mut Criterion) {
         ms.push(basic::test_basic_init_messages(1, *msg_size));
     }
 
-    let mut group = c.benchmark_group("send(k, m, pk_i)");
+    let mut group = c.benchmark_group("basic.send(k, m, pk_i)");
     for (i, msg_size) in LOG_SCALE.iter().enumerate() {
         group.bench_with_input(format!("Sent message of size {}", msg_size), msg_size, |b, &_msg_size| {
             b.iter(|| basic::Client::send(&clients[0].msg_key, &ms[i][0], i.try_into().unwrap()))

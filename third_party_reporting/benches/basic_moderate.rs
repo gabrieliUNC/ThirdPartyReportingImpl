@@ -46,7 +46,7 @@ pub fn bench_basic_moderate(c: &mut Criterion) {
         reports.push(report[0].2.clone());
     }
 
-    let mut group = c.benchmark_group("moderate(k, pks, c1, c2, sigma, st)");
+    let mut group = c.benchmark_group("basic.moderate(k, pks, c1, c2, sigma, st)");
     for (i, msg_size) in LOG_SCALE.iter().enumerate() {
         group.bench_with_input(format!("Moderated message of size {}", msg_size), msg_size, |b, &_msg_size| {
             b.iter(|| basic::Moderator::moderate(&moderators[0].sk_enc, &moderators[0].sk_p, &ms[i][0], &reports[i]))

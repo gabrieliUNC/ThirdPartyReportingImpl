@@ -12,7 +12,7 @@ pub fn bench_setup_mod(c: &mut Criterion) {
     // One time setup to generate platform needed for mod setup
     let platform = basic::test_basic_setup_platform();
 
-    let mut group = c.benchmark_group("SetupMod(pk_reg, 1^lambda)");
+    let mut group = c.benchmark_group("basic.SetupMod(pk_reg, 1^lambda)");
     for num_moderators in [1, 2, 4].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(num_moderators), num_moderators, |b, &num_moderators| {
             b.iter(|| setup_mod(&platform.k_reg, num_moderators))
