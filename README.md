@@ -22,8 +22,9 @@ Options:
 For example `cargo run -- --basic --mod-priv --num-clients 20 --msg-size 30` runs the basic scheme and moderator privacy scheme with 20 clients and a message size of 30 bytes.
 
 ## Benchmarking
-All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs)
+All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs). Criterion usually runs each test for some large number of iterations >10k and reports common statistics. To run all benchmarks, simply use `cargo bench`. Criterion also uses regex on the benchmark names [Command Line Options](https://bheisler.github.io/criterion.rs/book/user_guide/command_line_options.html).
 - Run `cargo bench` to run all benchmarks
+- Run `cargo bench -- {scheme}` to run only benchmarks on the {scheme}, i.e. basic, mod_priv, constant_mod_priv
 
 ## Basic Scheme
 ### Primitives
