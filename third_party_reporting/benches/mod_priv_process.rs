@@ -27,18 +27,7 @@ pub fn bench_mod_priv_process(c: &mut Criterion) {
         ms.push(mod_priv::test_init_messages(1, *msg_size));
     }
 
-
-    // Send messages
-    let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> = Vec::new();
-    // c1c2ad[i][j] = Encryption of message j to moderator i
-    for i in 0..moderators.len() {
-        let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, Point)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
-        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
-            tmp.push(mod_priv::test_send(1, &moderators[i], &clients, &ms[j], false));
-        }
-        c1c2ad.push(tmp);
-    }
-
+    let mut c1c2ad = mod_priv::test_send_variable(&moderators, &clients, &ms);
 
     let mut group = c.benchmark_group("mod-priv.process()");
     for (i, num_moderators) in  MOD_SCALE.iter().enumerate() {
