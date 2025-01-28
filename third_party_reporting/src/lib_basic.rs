@@ -180,6 +180,28 @@ pub fn test_basic_setup_mod(platform: &mut Platform, num_moderators: usize) -> (
     (moderators, pks)
 }
 
+
+pub fn test_setup() -> (Vec<Platform>, Vec<Vec<Moderator>>, Vec<Vec<Point>>) {
+    let n: usize = usize::try_from(MOD_SCALE.len()).unwrap();
+    let mut platforms: Vec<Platform> = Vec::with_capacity(n);
+    
+    for _i in 0..n {
+        platforms.push(Platform::new());
+    }
+    
+    let mut moderators: Vec<Vec<Moderator>> = Vec::with_capacity(n);
+    let mut pubs: Vec<Vec<Point>> = Vec::new();
+
+    for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
+        let k = usize::try_from(*num_moderators).unwrap();
+        let (mods, pks) = test_basic_setup_mod(&mut platforms[i], k);
+        moderators.push(mods);
+        pubs.push(pks);
+    }
+
+    (platforms, moderators, pubs)
+}
+
 // Setup Clients
 pub fn test_basic_init_clients(num_clients: usize) -> Vec<Client> {
     let mut clients: Vec<Client> = Vec::with_capacity(num_clients);
@@ -214,6 +236,25 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
             println!("Sent message: {}", &ms[i]);
         }
         c1c2ad.push((c1, c2, ad));
+    }
+
+    c1c2ad
+}
+
+
+// Send messages of sizes in MSG_SIZE_SCALE
+// to platforms with num moderators in MOD_SCALE
+pub fn test_send_variable(clients: &Vec<Client>, ms: &Vec<Vec<String>>) -> 
+Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> {
+    // Send messages
+    let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> = Vec::new();
+    // c1c2ad[i][j] = Encryption of message j to moderator i
+    for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
+        let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, u32)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+            tmp.push(test_basic_send(1, *num_moderators, clients, &ms[j], false));
+        }
+        c1c2ad.push(tmp);
     }
 
     c1c2ad
