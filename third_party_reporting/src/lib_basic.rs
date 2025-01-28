@@ -40,13 +40,13 @@ impl Moderator {
         let (k_f, c2, ctx, ct) = report;
         let (el_gamal_ct, sigma, nonce) = ct;
 
-        let sigma_pt = gamal::decrypt(*sk_enc, (*el_gamal_ct, sigma.to_vec()), *nonce);
+        let sigma_pt = gamal::decrypt(sk_enc, &(*el_gamal_ct, sigma.to_vec()), nonce);
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
 
         // Verify signature
-        assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), sigma_pt));
+        assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), &sigma_pt));
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -57,10 +57,8 @@ impl Moderator {
 
 // Platform Properties
 pub struct Platform {
-    pub k_p: Option<Vec<u8>>, // Platform key used for proxy re-encryption
-                  // Integer mod Z_q
-    pub k_reg: Option<Vec<u8>>, // Registration key also used for proxy re-encyrption
-               // Group element in G_2
+    pub k_p: Option<Vec<u8>>, // Platform key
+    pub k_reg: Option<Vec<u8>>, // Registration key
     pub sk_p: Vec<([u8; 32], Point)> // Vector of Moderator keys accessible to the Platform
 }
 
@@ -86,7 +84,7 @@ impl Platform {
         let (mac_key_i, mod_pk_i) = &ks[moderator_id];
         let sigma_pt = mac_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
-        let ct = gamal::encrypt(*mod_pk_i, sigma_pt);
+        let ct = gamal::encrypt(mod_pk_i, &sigma_pt);
 
 
         (ct, (ctx.to_vec(), ad))
@@ -158,12 +156,6 @@ impl Client {
     }
 }
 
-
-// Basic scheme testing decomposition for benchmarking
-// still have num_moderators as a variable despite 
-// this having minimal effect on running time
-// as clients choose 1 moderator and server
-// encrypts under 1 moderator's pk
 
 // SetupPlatform(1^lambda)
 pub fn test_basic_setup_platform() -> Platform {

@@ -1,6 +1,6 @@
 use criterion::*;
 use third_party_reporting::lib_mod_priv as mod_priv;
-const MOD_SCALE: [u8; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
+use third_party_reporting::lib_common::*;
 
 
 pub fn mod_priv_setup_mod(c: &mut Criterion) {
@@ -12,9 +12,9 @@ pub fn mod_priv_setup_mod(c: &mut Criterion) {
         platforms.push(mod_priv::Platform::new());
     }
 
-    let mut group = c.benchmark_group("mod_priv.SetupMod(pk_reg, 1^lambda)");
+    let mut group = c.benchmark_group("mod-priv.setup_mod()");
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
-        group.bench_with_input(format!("ModPriv.SetupMod() with {} moderators", num_moderators), num_moderators, |b, &num_moderators| {
+        group.bench_with_input(format!("mod-priv.setup_mod() with {} moderators", num_moderators), num_moderators, |b, &num_moderators| {
             b.iter(|| mod_priv::test_setup_mod(&mut platforms[i], num_moderators.into()))
         });
     }

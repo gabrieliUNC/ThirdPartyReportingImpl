@@ -4,6 +4,9 @@ use rand_core::RngCore;
 
 type HmacSha256 = Hmac<Sha256>;
 
+pub const CTX_LEN: usize = 100;
+pub const MOD_SCALE: [usize; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
+pub const MSG_SIZE_SCALE: [usize; 8] = [8, 16, 32, 64, 128, 256, 512, 1024];
 
 // Committment Scheme
 pub(crate) fn com_commit(r: &[u8], m: &str) -> Vec<u8> {
@@ -38,12 +41,12 @@ pub(crate) fn mac_sign(k: &[u8; 32], m: &Vec<u8>) -> Vec<u8> {
     sigma
 }
 
-pub(crate) fn mac_verify(k: &[u8; 32], m: &Vec<u8>, sigma: Vec<u8>) -> bool {
+pub(crate) fn mac_verify(k: &[u8; 32], m: &Vec<u8>, sigma: &Vec<u8>) -> bool {
     let mut mac = <HmacSha256 as Mac>::new_from_slice(k).expect("");
     mac.update(&m);
     let t = mac.finalize().into_bytes().to_vec();
 
-    let valid = sigma == t;
+    let valid = *sigma == t;
 
     valid
 }

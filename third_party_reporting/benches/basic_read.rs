@@ -3,6 +3,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
 use third_party_reporting::lib_basic as basic;
+use third_party_reporting::lib_common::*;
 
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);

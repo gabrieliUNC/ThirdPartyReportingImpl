@@ -18,7 +18,6 @@ type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
-const MOD_SCALE: [u8; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
 
 // Moderator Properties
 pub struct Moderator {
@@ -48,14 +47,14 @@ impl Moderator {
         let (k_f, c2, ctx, ct) = report;
         let (el_gamal_ct, sigma, nonce) = ct;
 
-        let sigma_pt = gamal::pre_dec(*sk_enc, (*el_gamal_ct, sigma.to_vec()), *nonce);
+        let sigma_pt = gamal::pre_dec(sk_enc, &(*el_gamal_ct, sigma.to_vec()), nonce);
         let sigma_pt:Vec<Vec<u8>> = bincode::deserialize(&sigma_pt).unwrap();
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
 
         // Verify signature
-        assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), sigma_pt[moderator_id].clone()));
+        assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), &sigma_pt[moderator_id]));
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -66,10 +65,8 @@ impl Moderator {
 
 // Platform Properties
 pub struct Platform {
-    pub k_p: Option<Vec<u8>>, // Platform key used for proxy re-encryption
-                  // Integer mod Z_q
-    pub k_reg: Option<Vec<u8>>, // Registration key also used for proxy re-encyrption
-               // Group element in G_2
+    pub k_p: Option<Vec<u8>>, // Platform key
+    pub k_reg: Option<Vec<u8>>, // Registration key
     pub sk_p: Vec<([u8; 32], Point)> // Vector of Moderator keys accessible to the Platform
 }
 
@@ -90,7 +87,7 @@ impl Platform {
         (self.k_p.clone(), self.k_reg.clone())
     }
 
-    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: Point, ctx: &Vec<u8>) -> (Ciphertext, (Vec<u8>, Point)) {
+    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (Ciphertext, (Vec<u8>, Point)) {
         let mut sigma_pt: Vec<Vec<u8>> = Vec::with_capacity(ks.len());
         for i in 0..ks.len() {
             sigma_pt.push(mac_sign(&ks[i].0, &[&c2[..], &ctx[..]].concat()));
@@ -98,10 +95,10 @@ impl Platform {
 
         let pk = ad;
         let payload = bincode::serialize(&sigma_pt).expect("");
-        let ct = gamal::pre_enc(pk, (*payload.as_slice()).to_vec());
+        let ct = gamal::pre_enc(pk, &(*payload.as_slice()).to_vec());
 
 
-        (ct, (ctx.to_vec(), pk))
+        (ct, (ctx.to_vec(), *pk))
     }
 
 }
@@ -145,7 +142,7 @@ impl Client {
         let payload = bincode::deserialize::<(&str, u32, [u8; 32], [u8; 32])>(&payload_bytes).unwrap();
 
         let (message, moderator_id, k_f, k_r) = payload;
-        let k_r = Scalar::from_bytes_mod_order(k_r); // Right function?????
+        let k_r = Scalar::from_bytes_mod_order(k_r);
 
         // Verify committment
         assert!(com_open(&c2, message, &k_f));
@@ -174,7 +171,7 @@ impl Client {
         assert!((&k_r * pk) == pk2);
         
         let (ct, sym_ct, nonce) = sigma;
-        let sigma_r = gamal::pre_re_enc(*ct, k_r);
+        let sigma_r = gamal::pre_re_enc(ct, &k_r);
 
 
         let report: ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = (k_f, c2.clone(), ctx.clone(), (sigma_r, sym_ct.to_vec(), *nonce));
@@ -184,49 +181,6 @@ impl Client {
     }
 }
 
-
-
-pub fn test_proxy() {
-    
-    // Setup()
-    let kp1 = gamal::elgamal_keygen();
-    let kp2 = gamal::elgamal_keygen();
-
-    let sk_1 = kp1.0; // x
-    let pk_1 = kp1.1; // g^x
-
-    let sk_2 = kp2.0; // y
-    let pk_2 = kp2.1; // g^y
-
-    let k1_2 = sk_2 * sk_1.invert(); // y / x
-    
-    assert!(&k1_2*pk_1 == pk_2);
-
-
-    // Send()
-    let s: Scalar = Scalar::random(&mut OsRng);
-    let pk = &s * pk_1; // g^(x*s)
-    let k_r = k1_2 * s.invert(); // y / (x * s)
-    
-    assert!((&k_r*pk) == pk_2); // g^((x*s*y)/(x*s)) == g^y
-
-    // Enc()
-    let pt: Vec<u8> = [1, 0, 0, 0].to_vec();
-    let (ct, sym_ct, nonce) = gamal::pre_enc(pk, pt); 
-    //let (c1, c2) = ct;  // f <- R 
-                        // (pt * g^f, g^(x*s*f))
-
-    // ReEnc()
-   //let c2_r = &k_r * c2; // g^((x*s*f*y)/(x*s))
-                          // (g^f, g^(f*y) )
-
-    let ct = gamal::pre_re_enc(ct, k_r);
-    // Dec() under pk2
-    let m = gamal::pre_dec(sk_2, (ct, sym_ct), nonce);
-
-    println!("{:?}", m);
-
-}
 
 
 pub fn test_setup_platform() -> Platform {
@@ -318,6 +272,24 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
     c1c2ad
 }
 
+// Send messages of sizes in MSG_SIZE_SCALE
+// to platforms with num moderators in MOD_SCALE
+pub fn test_send_variable(moderators: &Vec<Vec<Moderator>>, clients: &Vec<Client>, ms: &Vec<Vec<String>>) -> 
+Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> {
+    // Send messages
+    let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> = Vec::new();
+    // c1c2ad[i][j] = Encryption of message j to moderator i
+    for i in 0..moderators.len() {
+        let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, Point)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+            tmp.push(test_send(1, &moderators[i], clients, &ms[j], false));
+        }
+        c1c2ad.push(tmp);
+    }
+
+    c1c2ad
+}
+
 
 // process(k_p, ks, c1, c2, ad, ctx)
 pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, platform: &Platform, print: bool) -> Vec<(Ciphertext, (Vec<u8>, Point))> {
@@ -329,7 +301,7 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
         if print {
             println!("Adding context: {}", ctx);
         }
-        let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
+        let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &ctx.as_bytes().to_vec());
 
         sigma_st.push((sigma, st));
     }
@@ -337,6 +309,22 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
     sigma_st
 }
 
+// Process messages of sizes in MSG_SIZE_SCALE
+// and encrypt them to moderators in MOD_SCALE
+pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(Ciphertext, (Vec<u8>, Point))>>> {
+    // Process messages
+    let mut sigma_st: Vec<Vec<Vec<(Ciphertext, (Vec<u8>, Point))>>> = Vec::new();
+    // sigma_st[i][j] = encrypted signature on message commitmment j to moderator i
+    for i in 0..moderators.len() {
+        let mut tmp: Vec<Vec<(Ciphertext, (Vec<u8>, Point))>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+            tmp.push(test_process(1, *msg_size, &c1c2ad[i][j], &platforms[i], false));
+        }
+        sigma_st.push(tmp);
+    }
+
+    sigma_st
+}
 
 // read(k, pks, c1, c2, sigma, st)
 pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, Point))>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
