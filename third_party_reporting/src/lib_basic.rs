@@ -278,6 +278,24 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
     sigma_st
 }
 
+
+// Process messages of sizes in MSG_SIZE_SCALE
+// and encrypt them to moderators in MOD_SCALE
+pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(Ciphertext, (Vec<u8>, u32))>>> {
+    // Process messages
+    let mut sigma_st: Vec<Vec<Vec<(Ciphertext, (Vec<u8>, u32))>>> = Vec::new();
+    // sigma_st[i][j] = encrypted signature on message commitmment j to moderator i
+    for i in 0..moderators.len() {
+        let mut tmp: Vec<Vec<(Ciphertext, (Vec<u8>, u32))>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+            tmp.push(test_basic_process(1, *msg_size, &c1c2ad[i][j], &platforms[i], false));
+        }
+        sigma_st.push(tmp);
+    }
+
+    sigma_st
+}
+
 // read(k, pks, c1, c2, sigma, st)
 pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
     // Receive messages
