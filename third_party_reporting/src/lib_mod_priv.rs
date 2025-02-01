@@ -281,7 +281,7 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> {
     // c1c2ad[i][j] = Encryption of message j to moderator i
     for i in 0..moderators.len() {
         let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, Point)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
-        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+        for (j, _msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             tmp.push(test_send(1, &moderators[i], clients, &ms[j], false));
         }
         c1c2ad.push(tmp);

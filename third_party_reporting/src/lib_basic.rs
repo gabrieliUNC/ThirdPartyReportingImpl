@@ -249,9 +249,9 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> {
     // Send messages
     let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> = Vec::new();
     // c1c2ad[i][j] = Encryption of message j to moderator i
-    for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
+    for (_i, num_moderators) in MOD_SCALE.iter().enumerate() {
         let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, u32)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
-        for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
+        for (j, _msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             tmp.push(test_basic_send(1, *num_moderators, clients, &ms[j], false));
         }
         c1c2ad.push(tmp);
