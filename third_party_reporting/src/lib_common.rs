@@ -1,8 +1,12 @@
 use hmac::{Hmac, Mac};
-use sha2::Sha256;
+use sha2::{Sha256, Sha512};
 use rand_core::RngCore;
-
+use rand_core::OsRng;
+use rand::{CryptoRng, Rng, thread_rng};
+use getrandom::*;
 type HmacSha256 = Hmac<Sha256>;
+type HmacSha512 = Hmac<Sha512>;
+
 
 pub const CTX_LEN: usize = 100;
 pub const MOD_SCALE: [usize; 8] = [1, 2, 4, 8, 16, 32, 64, 128];
@@ -41,6 +45,7 @@ pub(crate) fn mac_sign(k: &[u8; 32], m: &Vec<u8>) -> Vec<u8> {
     sigma
 }
 
+
 pub(crate) fn mac_verify(k: &[u8; 32], m: &Vec<u8>, sigma: &Vec<u8>) -> bool {
     let mut mac = <HmacSha256 as Mac>::new_from_slice(k).expect("");
     mac.update(&m);
@@ -51,3 +56,12 @@ pub(crate) fn mac_verify(k: &[u8; 32], m: &Vec<u8>, sigma: &Vec<u8>) -> bool {
     valid
 }
 
+
+// MAC prg
+pub const MAC_PRG_CONST_1: &str = "MAC_PRG_CONSTANT_1";
+pub const MAC_PRG_CONST_2: &str = "MAC_PRG_CONSTANT_2";
+pub(crate) fn mac_prg(seed: &[u8; 32]) -> (Vec<u8>, Vec<u8>) {
+    let s = mac_sign(seed, &MAC_PRG_CONST_1.as_bytes().to_vec());
+    let r = mac_sign(seed, &MAC_PRG_CONST_2.as_bytes().to_vec());
+    (s, r)
+}

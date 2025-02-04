@@ -1234,6 +1234,8 @@ dependencies = [
  "digest 0.10.7",
  "ff",
  "generic-array 1.2.0",
+ "getrandom 0.3.1",
+ "group",
  "hmac",
  "lazy_static",
  "openssl",
