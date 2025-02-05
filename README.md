@@ -12,10 +12,11 @@ Usage: third_party_reporting [OPTIONS]
 Options:
       --basic
       --mod-priv
-      --constant-mod-priv
+      --const-priv
       --num-clients <NUM_CLIENTS>        [default: 10]
       --num-moderators <NUM_MODERATORS>  [default: 10]
       --msg-size <MSG_SIZE>              [default: 10]
+      --test
   -h, --help                             Print help
   -V, --version                          Print version
 ```
