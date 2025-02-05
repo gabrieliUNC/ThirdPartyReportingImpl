@@ -25,7 +25,7 @@ For example `cargo run -- --basic --mod-priv --num-clients 20 --msg-size 30` run
 ## Benchmarking
 All benchmarks are located in the `benches` folder. Benchmarking is done using [Criterion](https://github.com/bheisler/criterion.rs). Criterion usually runs each test for some large number of iterations (>10k) and reports common statistics. To run all benchmarks, simply use `cargo bench`. Criterion also uses regex on the benchmark names through [Command Line Options](https://bheisler.github.io/criterion.rs/book/user_guide/command_line_options.html).
 - Run `cargo bench` to run all benchmarks
-- Run `cargo bench -- {scheme}` to run only benchmarks on the {scheme}, i.e. `basic, mod-priv, constant-mod-priv`
+- Run `cargo bench -- {scheme}` to run only benchmarks on the {scheme}, i.e. `basic, mod-priv, const-mod-priv`
 - Run `cargo bench -- {method}` to compare benchmarks on a specific {method}, i.e. `send, process, moderate`
 - Isolate individual tests with `cargo bench -- {scheme}.{method}` i.e. `cargo bench -- mod-priv.send`
 
