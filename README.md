@@ -39,3 +39,7 @@ All benchmarks are located in the `benches` folder. Benchmarking is done using [
 ## Moderator Privacy Scheme
 - All basic scheme primitives
 - El Gamal Proxy Re-Encryption [Improved Proxy Re-Enc](https://eprint.iacr.org/2005/028.pdf) and [Atomic Proxy Crypto](https://www.researchgate.net/publication/2581968_Atomic_Proxy_Cryptography)
+
+## Constant Moderator Privacy Scheme
+- All Basic and Moderator Privacy scheme primitives
+- BLS Elliptic Curve operations and pairings through the [Blst](https://github.com/supranational/blst/tree/165ec77634495175aefd045a48d3469af6950ea4) library and its rust friendly implementation: [Blstrs](https://github.com/filecoin-project/blstrs)
