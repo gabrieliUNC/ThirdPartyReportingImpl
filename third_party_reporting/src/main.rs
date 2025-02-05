@@ -13,6 +13,8 @@ use ff::Field;
 use std::ptr;
 use std::env;
 use third_party_reporting::lib_blst as bls;
+use group::prime::PrimeCurveAffine;
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, arg_required_else_help = true)]
@@ -64,7 +66,7 @@ fn main() {
 }
 
 pub fn test() {
-    let g2 = bls::g2_generator();
+    let g2 = blstrs::G2Affine::generator();
     println!("{:?}", g2);
 }
 

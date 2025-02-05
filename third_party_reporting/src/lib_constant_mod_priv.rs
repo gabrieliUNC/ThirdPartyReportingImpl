@@ -17,6 +17,7 @@ use std::ptr;
 use blst::*;
 use blstrs as blstrs;
 use group::Curve;
+use group::prime::PrimeCurveAffine;
 use ff::Field;
 use blst::min_sig as G2;
 use blst::min_pk as G1;
@@ -27,8 +28,6 @@ type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
-
-const CTX_STRING: [u8; 100] = [0u8; 100];
 
 
 // Moderator Properties
@@ -54,7 +53,7 @@ impl Moderator {
         let sk = blstrs::Scalar::random(rng);
 
         // k_reg^k
-        let pk = bls::g2_mult(pk_reg, &sk);
+        let pk = (pk_reg * sk).to_affine();
         Moderator {
             sk_p: mac_keygen(),
             sk_enc: keys2.0,
@@ -74,18 +73,16 @@ impl Moderator {
 
         // Remove r' from sigma
         let r_prime = blstrs::Scalar::from_bytes_le(&r_prime.try_into().unwrap()).unwrap();
-        //println!("{:?}", r_prime);
         let r_prime_inv = r_prime.invert().unwrap();
 
         let sigma = sigma_prime * r_prime_inv;
 
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        //println!("{:?}", hashed_g1);
         // H(c2, ctx)^k
         let hashed_g1 = (hashed_g1 * (*k)).to_affine();
         
-        let maybe_sigma = blstrs::pairing(&hashed_g1, &bls::g2_generator());
+        let maybe_sigma = blstrs::pairing(&hashed_g1, &blstrs::G2Affine::generator());
 
         // Verify committment
         let k_f = r;
@@ -120,8 +117,8 @@ impl Platform {
         let sk_inv = sk.invert().unwrap();
 
         // g2^(1/k_p)
-        let g2 = bls::g2_generator();
-        let pk = bls::g2_mult(&g2, &sk_inv);
+        let g2 = blstrs::G2Affine::generator();
+        let pk = (g2 * sk_inv).to_affine();
 
         Platform {
             k_p: sk,
@@ -138,10 +135,8 @@ impl Platform {
         let r_prime = blstrs::Scalar::random(rng);
 
 
-        //println!("{:?}", r_prime);
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        //println!("{:?}", hashed_g1);
         // H(c2, ctx)^k_p
         let hashed_g1 = hashed_g1 * k_p;
         // H(c2, ctx)^(k_p * r')
@@ -150,30 +145,12 @@ impl Platform {
 
         // Compute pairing
         let sigma: blstrs::Gt = blstrs::pairing(&hashed_g1.to_affine(), pk_b);
-        /*
-        let hashed_g1 = bls::hash_to_g1(&[&c2[..], &ctx[..]].concat().to_vec());
-        // H(c2, ctx)^k_p
-        let hashed_g1 = bls::g1_mult(&hashed_g1, &k_p.to_bytes());
-        // H(c2, ctx)^(k_p * r')
-        let hashed_g1 = bls::g1_mult(&hashed_g1, &r_prime.to_bytes());
-        
-        // Compute pairing (g1, g2) -> gt
-        let sigma: blstrs::Gt = blstrs::pairing(&hashed_g1, pk_b);
-        */
 
         // PRE Scheme
         let c3 = gamal::pre_enc(pk_a, &r_prime.to_bytes_le().to_vec());
 
         let st = (c3, pk_a.clone(), pk_b.clone(), ctx.clone());
 
-        /*
-        let payload = bincode::serialize(&sigma_pt).expect("");
-
-        let ct = gamal::pre_enc(pk, &(*payload.as_slice()).to_vec());
-
-
-        (ct, (ctx.to_vec(), *pk))
-        */
 
         (sigma, st)
     }
@@ -242,13 +219,10 @@ impl Client {
 
         assert!((&k_r * pk_a) == *pk2);
 
-        //println!("{:?}", k_r);
-        //println!("{:?}", pk_a);
-        //println!("{:?}", *pk2);
 
         // Bls Signature
         let r_scal: blstrs::Scalar = bls::new_blstrs_scalar(&r.clone().try_into().unwrap());
-        let pk_b: blstrs::G2Affine = bls::g2_mult(&pk_proc, &r_scal);
+        let pk_b = (pk_proc * r_scal).to_affine();
 
         let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r, &t.try_into().unwrap(), &r.try_into().unwrap());       
 
@@ -264,16 +238,13 @@ impl Client {
 
         let (pk1, pk2, k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()].clone();
 
-        //println!("{:?}", k_r);
-        //println!("{:?}", pk_a);
-        //println!("{:?}", pk2);
 
         // Ensure this message is reportable
         assert!((&k_r * pk_a) == pk2);
 
 
         let r_scal = bls::new_blstrs_scalar(&r.clone().try_into().unwrap());
-        assert!((bls::g2_mult(&pk_proc, &r_scal) == pk_b));
+        assert!((pk_proc * r_scal).to_affine() == pk_b);
         
         // compute inverse of r
         let r_inv: blstrs::Scalar = bls::new_blstrs_scalar(&r.clone().try_into().unwrap()).invert().unwrap();
@@ -314,7 +285,6 @@ pub fn test_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Mo
     (moderators, pks)
 }
 
-/*
 pub fn test_setup() -> (Vec<Platform>, Vec<Vec<Moderator>>, Vec<Vec<PublicKey>>) {
     let n: usize = usize::try_from(MOD_SCALE.len()).unwrap();
     let mut platforms: Vec<Platform> = Vec::with_capacity(n);
@@ -335,7 +305,6 @@ pub fn test_setup() -> (Vec<Platform>, Vec<Vec<Moderator>>, Vec<Vec<PublicKey>>)
 
     (platforms, moderators, pubs)
 }
-*/
 
 // Setup Clients
 pub fn test_init_clients(num_clients: usize) -> Vec<Client> {
