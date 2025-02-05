@@ -6,21 +6,16 @@ use bincode;
 use crate::lib_common::*;
 use crate::lib_gamal as gamal;
 use rand::distributions::Alphanumeric;
-use rand::{RngCore, thread_rng};
+use rand::thread_rng;
 use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use rand_core::OsRng;
-use std::ptr;
 
-use blst::*;
 use blstrs as blstrs;
 use group::Curve;
 use group::prime::PrimeCurveAffine;
 use ff::Field;
-use blst::min_sig as G2;
-use blst::min_pk as G1;
 use crate::lib_blst as bls;
 
 
@@ -48,7 +43,7 @@ impl Moderator {
         let keys = gamal::elgamal_keygen();
         let keys2 = gamal::elgamal_keygen();
 
-        let mut rng = thread_rng();
+        let rng = thread_rng();
         // k <- R
         let sk = blstrs::Scalar::random(rng);
 
@@ -108,7 +103,7 @@ pub struct Platform {
 // Platform Implementation
 impl Platform {
     pub fn new() -> Platform {
-        let mut rng = thread_rng();
+        let rng = thread_rng();
         // k_p <- R
         let sk = blstrs::Scalar::random(rng);
 
@@ -352,16 +347,16 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
     c1c2ad
 }
 
-/*
+
 // Send messages of sizes in MSG_SIZE_SCALE
 // to platforms with num moderators in MOD_SCALE
 pub fn test_send_variable(moderators: &Vec<Vec<Moderator>>, clients: &Vec<Client>, ms: &Vec<Vec<String>>) -> 
-Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> {
+Vec<Vec<Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>>> {
     // Send messages
-    let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> = Vec::new();
+    let mut c1c2ad: Vec<Vec<Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>>> = Vec::new();
     // c1c2ad[i][j] = Encryption of message j to moderator i
     for i in 0..moderators.len() {
-        let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, Point)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        let mut tmp: Vec<Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
         for (j, _msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             tmp.push(test_send(1, &moderators[i], clients, &ms[j], false));
         }
@@ -370,7 +365,7 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> {
 
     c1c2ad
 }
-*/
+
 
 // process(k_p, ks, c1, c2, ad, ctx)
 pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>, platform: &Platform, print: bool) -> Vec<(blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>))> {
@@ -390,15 +385,15 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
     sigma_st
 }
 
-/*
+
 // Process messages of sizes in MSG_SIZE_SCALE
 // and encrypt them to moderators in MOD_SCALE
-pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(Ciphertext, (Vec<u8>, Point))>>> {
+pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>))>>> {
     // Process messages
-    let mut sigma_st: Vec<Vec<Vec<(Ciphertext, (Vec<u8>, Point))>>> = Vec::new();
+    let mut sigma_st: Vec<Vec<Vec<(blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>))>>> = Vec::new();
     // sigma_st[i][j] = encrypted signature on message commitmment j to moderator i
     for i in 0..moderators.len() {
-        let mut tmp: Vec<Vec<(Ciphertext, (Vec<u8>, Point))>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        let mut tmp: Vec<Vec<(blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>))>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             tmp.push(test_process(1, *msg_size, &c1c2ad[i][j], &platforms[i], false));
         }
@@ -407,7 +402,7 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 
     sigma_st
 }
-*/
+
 
 
 // read(k, pks, c1, c2, sigma, st)

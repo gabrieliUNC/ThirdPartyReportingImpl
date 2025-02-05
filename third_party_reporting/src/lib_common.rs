@@ -1,9 +1,6 @@
 use hmac::{Hmac, Mac};
 use sha2::{Sha256, Sha512};
 use rand_core::RngCore;
-use rand_core::OsRng;
-use rand::{CryptoRng, Rng, thread_rng};
-use getrandom::*;
 type HmacSha256 = Hmac<Sha256>;
 type HmacSha512 = Hmac<Sha512>;
 
