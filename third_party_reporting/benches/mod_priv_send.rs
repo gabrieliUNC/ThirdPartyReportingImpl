@@ -14,7 +14,7 @@ pub fn mod_priv_send(c: &mut Criterion) {
     }
 
     // One time setup of moderators
-    let (platforms, mods, pks) = mod_priv::test_setup();
+    let (_platforms, _mods, pks) = mod_priv::test_setup();
 
     let mut group = c.benchmark_group("mod-priv.send()");
 

@@ -1,8 +1,7 @@
 use hmac::{Hmac, Mac};
-use sha2::{Sha256, Sha512};
+use sha2::Sha256;
 use rand_core::RngCore;
 type HmacSha256 = Hmac<Sha256>;
-type HmacSha512 = Hmac<Sha512>;
 
 
 pub const CTX_LEN: usize = 100;

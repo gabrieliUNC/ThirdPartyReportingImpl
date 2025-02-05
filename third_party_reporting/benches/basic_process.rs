@@ -13,7 +13,7 @@ pub fn process(platform: &basic::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
 
 pub fn bench_basic_process(c: &mut Criterion) {
     // Setup platforms and moderators
-    let (platforms, moderators, pks) = basic::test_setup();
+    let (platforms, _moderators, _pks) = basic::test_setup();
 
     // One time setup to generate client needed for message sending
     let clients = basic::test_basic_init_clients(1);
@@ -25,7 +25,7 @@ pub fn bench_basic_process(c: &mut Criterion) {
     }
 
     // Send messages
-    let mut c1c2ad = basic::test_send_variable(&clients, &ms);
+    let c1c2ad = basic::test_send_variable(&clients, &ms);
 
     let mut group = c.benchmark_group("basic.process()");
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {

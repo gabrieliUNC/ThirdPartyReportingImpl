@@ -60,7 +60,7 @@ impl Moderator {
         }
     }
 
-    pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, sk_p: &[u8; 32], moderator_id: usize, message: &str, report: &(Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext)) -> String {
+    pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, _sk_p: &[u8; 32], _moderator_id: usize, message: &str, report: &(Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext)) -> String {
         let (c2, r, ctx, sigma_prime, c3_prime) = report;
         let (el_gamal_ct, r_ct, nonce) = c3_prime;
 
@@ -123,7 +123,7 @@ impl Platform {
     }
 
 
-    pub fn process(k_p: &blstrs::Scalar, ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &(Point, blstrs::G2Affine), ctx: &Vec<u8>) -> (blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) {
+    pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &(Point, blstrs::G2Affine), ctx: &Vec<u8>) -> (blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) {
         let (pk_a, pk_b) = ad;
         
         let rng = thread_rng();
@@ -144,10 +144,8 @@ impl Platform {
         // PRE Scheme
         let c3 = gamal::pre_enc(pk_a, &r_prime.to_bytes_le().to_vec());
 
-        let st = (c3, pk_a.clone(), pk_b.clone(), ctx.clone());
 
-
-        (sigma, st)
+        (sigma, (c3, *pk_a, *pk_b, ctx.clone()))
     }
 
 }
@@ -192,7 +190,7 @@ impl Client {
         let k_r = Scalar::from_bytes_mod_order(k_r);
 
         // Retrieve franking key
-        let (s, k_f) = mac_prg(&t);
+        let (_s, k_f) = mac_prg(&t);
 
         // Verify committment
         assert!(com_open(&c2, message, &k_f));
@@ -225,13 +223,13 @@ impl Client {
     }
   
     pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::Gt, st: &(Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) -> (String, u32, (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext)) {
-        let (c3, pk_a, pk_b, ctx): (Ciphertext, Point, blstrs::G2Affine, Vec<u8>) = st.clone();
+        let (c3, pk_a, pk_b, ctx) = st;
         let (message, moderator_id, t, k_r) = Self::ccae_dec(msg_key, c1, c2);
 
         // Derive randomness
-        let (s, r) = mac_prg(&t);
+        let (_s, r) = mac_prg(&t);
 
-        let (pk1, pk2, k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()].clone();
+        let (_pk1, pk2, _k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()];
 
 
         // Ensure this message is reportable
@@ -239,7 +237,7 @@ impl Client {
 
 
         let r_scal = bls::new_blstrs_scalar(&r.clone().try_into().unwrap());
-        assert!((pk_proc * r_scal).to_affine() == pk_b);
+        assert!((pk_proc * r_scal).to_affine() == *pk_b);
         
         // compute inverse of r
         let r_inv: blstrs::Scalar = bls::new_blstrs_scalar(&r.clone().try_into().unwrap()).invert().unwrap();
@@ -249,7 +247,7 @@ impl Client {
         let (ct, sym_ct, nonce) = c3;
         let c3_prime = gamal::pre_re_enc(&ct, &k_r);
 
-        let report: (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext) = (c2.clone(), r.try_into().unwrap(), ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), nonce));
+        let report: (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext) = (c2.clone(), r.try_into().unwrap(), ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), *nonce));
 
 
         (message, moderator_id, report)

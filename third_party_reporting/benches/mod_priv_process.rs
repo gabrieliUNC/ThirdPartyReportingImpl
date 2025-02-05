@@ -16,7 +16,7 @@ pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Po
 
 pub fn bench_mod_priv_process(c: &mut Criterion) {
     // Setup platforms and moderators
-    let (platforms, moderators, pks) = mod_priv::test_setup();
+    let (platforms, moderators, _pks) = mod_priv::test_setup();
 
     // One time setup to generate client needed for message sending
     let clients = mod_priv::test_init_clients(1);
@@ -27,7 +27,7 @@ pub fn bench_mod_priv_process(c: &mut Criterion) {
         ms.push(mod_priv::test_init_messages(1, *msg_size));
     }
 
-    let mut c1c2ad = mod_priv::test_send_variable(&moderators, &clients, &ms);
+    let c1c2ad = mod_priv::test_send_variable(&moderators, &clients, &ms);
 
     let mut group = c.benchmark_group("mod-priv.process()");
     for (i, num_moderators) in  MOD_SCALE.iter().enumerate() {

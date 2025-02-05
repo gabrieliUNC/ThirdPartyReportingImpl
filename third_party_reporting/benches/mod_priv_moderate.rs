@@ -1,14 +1,12 @@
 use criterion::*;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
 use third_party_reporting::lib_mod_priv as mod_priv;
 use third_party_reporting::lib_common::*;
 
 type Point = RistrettoPoint;
-type PublicKey = (Point, Point, Scalar);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
 
@@ -27,10 +25,10 @@ pub fn bench_mod_priv_moderate(c: &mut Criterion) {
 
 
     // Send messages
-    let mut c1c2ad = mod_priv::test_send_variable(&moderators, &clients, &ms);
+    let c1c2ad = mod_priv::test_send_variable(&moderators, &clients, &ms);
 
     // Process messages
-    let mut sigma_st = mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
+    let sigma_st = mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
 
     // Read messages
     let mut reports: Vec<Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))>> = Vec::new();
@@ -48,7 +46,7 @@ pub fn bench_mod_priv_moderate(c: &mut Criterion) {
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             group.bench_with_input(format!("mod-priv.moderate() message of size {} with {} moderators", msg_size, num_moderators), msg_size, |b, &_msg_size| {
-                let (message, moderator_id, report) = &reports[i][j];
+                let (_message, moderator_id, report) = &reports[i][j];
                 let k = usize::try_from(*moderator_id).unwrap();
                 b.iter(|| mod_priv::Moderator::moderate(&moderators[i][k].sk_enc, &moderators[i][k].sk_p, k, &ms[j][0], &report))
             });

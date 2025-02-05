@@ -32,10 +32,10 @@ pub fn bench_const_mod_priv_read(c: &mut Criterion) {
     }
 
     // Send messages
-    let mut c1c2ad = constant_mod_priv::test_send_variable(&moderators, &clients, &ms);
+    let c1c2ad = constant_mod_priv::test_send_variable(&moderators, &clients, &ms);
 
     // Process messages
-    let mut sigma_st = constant_mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
+    let sigma_st = constant_mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
 
     let mut group = c.benchmark_group("const-mod-priv.read()");
     

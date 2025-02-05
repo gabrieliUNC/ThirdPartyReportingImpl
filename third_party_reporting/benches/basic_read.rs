@@ -29,10 +29,10 @@ pub fn bench_basic_read(c: &mut Criterion) {
     }
 
     // Send messages
-    let mut c1c2ad = basic::test_send_variable(&clients, &ms);
+    let c1c2ad = basic::test_send_variable(&clients, &ms);
 
     // Process messages
-    let mut sigma_st = basic::test_process_variable(&moderators, &c1c2ad, &platforms);
+    let sigma_st = basic::test_process_variable(&moderators, &c1c2ad, &platforms);
 
     let mut group = c.benchmark_group("basic.read()");
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {

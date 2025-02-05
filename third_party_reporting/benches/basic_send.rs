@@ -7,7 +7,7 @@ pub fn bench_basic_send(c: &mut Criterion) {
     let clients = basic::test_basic_init_clients(1);
 
     // Generate platforms and mods as in MOD_SCALE
-    let (platforms, moderators, pks) = basic::test_setup();
+    let (_platforms, _moderators, _pks) = basic::test_setup();
 
     // One time setup to generate messages of various sizes
     let mut ms: Vec<Vec<String>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
@@ -16,7 +16,7 @@ pub fn bench_basic_send(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("basic.send()");
-    for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
+    for (_i, num_moderators) in MOD_SCALE.iter().enumerate() {
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             group.bench_with_input(format!("basic.send() message of size {} with {} moderators", msg_size, num_moderators), msg_size, |b, &_msg_size| {
                 b.iter(|| basic::Client::send(&clients[0].msg_key, &ms[j][0], j.try_into().unwrap()))
