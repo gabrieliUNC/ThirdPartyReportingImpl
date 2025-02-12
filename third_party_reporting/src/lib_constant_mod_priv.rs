@@ -11,6 +11,7 @@ use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use rand_core::OsRng;
 
 use blstrs as blstrs;
 use group::Curve;
@@ -164,70 +165,65 @@ impl Client {
         }
     }
 
-    pub fn ccae_enc(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, k_r: Scalar, t: &[u8; 32], k_f: &[u8; 32]) -> (Vec<u8>, Vec<u8>) {
-        let c2 = com_commit(k_f, message);
+
+    pub fn ccae_enc(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, k_r: Scalar, y: &[u8; 32]) -> (Vec<u8>, Vec<u8>) {
+        let k_f: [u8; 32] = mac_keygen(); // franking key or r in H(m, r) for committment
+        
+        let c2 = com_commit(&k_f, message);
 
         let cipher = Aes256Gcm::new(&msg_key);
         let nonce = Aes256Gcm::generate_nonce(&mut rand::rngs::OsRng);
 
-        let payload = bincode::serialize(&(message, moderator_id, t, k_r.to_bytes())).expect("");
+        let payload = bincode::serialize(&(message, moderator_id, k_f, y, k_r.to_bytes())).expect("");
         let c1_obj = cipher.encrypt(&nonce, payload.as_slice()).unwrap();
         let c1 = bincode::serialize::<(Vec<u8>, Vec<u8>)>(&(c1_obj, nonce.to_vec())).expect("");
 
         (c1, c2)
     }
 
-    pub fn ccae_dec(msg_key: &Key<Aes256Gcm>, c1: &Vec<u8>, c2: &Vec<u8>) -> (String, u32, [u8; 32], Scalar) {
+
+    pub fn ccae_dec(msg_key: &Key<Aes256Gcm>, c1: &Vec<u8>, c2: &Vec<u8>) -> (String, u32, [u8; 32], Scalar, [u8; 32]) {
         let c1_obj = bincode::deserialize::<(Vec<u8>, Vec<u8>)>(&c1).unwrap();
         let ct = c1_obj.0;
         let nonce = Nonce::from_slice(&c1_obj.1);
 
         let cipher = Aes256Gcm::new(&msg_key);
         let payload_bytes = cipher.decrypt(&nonce, ct.as_ref()).unwrap();
-        let payload = bincode::deserialize::<(&str, u32, [u8; 32], [u8; 32])>(&payload_bytes).unwrap();
+        let payload = bincode::deserialize::<(&str, u32, [u8; 32], [u8; 32], [u8; 32])>(&payload_bytes).unwrap();
 
-        let (message, moderator_id, t, k_r) = payload;
+        let (message, moderator_id, k_f, y, k_r) = payload;
         let k_r = Scalar::from_bytes_mod_order(k_r);
-
-        // Retrieve franking key
-        let (_s, k_f) = mac_prg(&t);
 
         // Verify committment
         assert!(com_open(&c2, message, &k_f));
 
-        (message.to_string(), moderator_id, t, k_r)
+        (message.to_string(), moderator_id, y, k_r, k_f)
     }
 
     pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: &PublicKey) -> (Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine)) {
         let (pk1, pk2, k1_2, pk_proc) = pk_i;
 
-        // PRG operations
-        let t = mac_keygen();
-        let (s, r) = mac_prg(&t);
-
         // El gamal proxy re-encryption
-        let s_scalar: Scalar = Scalar::from_bytes_mod_order(s.try_into().unwrap());
-        let pk_a: Point = &s_scalar * pk1;
-        let k_r: Scalar = k1_2 * s_scalar.invert();
+        let x = Scalar::random(&mut OsRng);
+        let pk_a: Point = &x * pk1;
+        let k_r: Scalar = k1_2 * x.invert();
 
         assert!((&k_r * pk_a) == *pk2);
 
 
         // Bls Signature
-        let r_scal: blstrs::Scalar = bls::new_blstrs_scalar(&r.clone().try_into().unwrap());
-        let pk_b = (pk_proc * r_scal).to_affine();
+        let y_rng = thread_rng();
+        let y = blstrs::Scalar::random(y_rng);
+        let pk_b = (pk_proc * y).to_affine();
 
-        let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r, &t.try_into().unwrap(), &r.try_into().unwrap());       
+        let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r, &y.to_bytes_le());
 
         (c1, c2, (pk_a, pk_b))
     }
   
     pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::Gt, st: &(Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) -> (String, u32, (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext)) {
         let (c3, pk_a, pk_b, ctx) = st;
-        let (message, moderator_id, t, k_r) = Self::ccae_dec(msg_key, c1, c2);
-
-        // Derive randomness
-        let (_s, r) = mac_prg(&t);
+        let (message, moderator_id, y, k_r, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
         let (_pk1, pk2, _k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()];
 
@@ -236,18 +232,18 @@ impl Client {
         assert!((&k_r * pk_a) == pk2);
 
 
-        let r_scal = bls::new_blstrs_scalar(&r.clone().try_into().unwrap());
-        assert!((pk_proc * r_scal).to_affine() == *pk_b);
+        let y_scal = blstrs::Scalar::from_bytes_le(&y).unwrap();
+        assert!((pk_proc * y_scal).to_affine() == *pk_b);
         
         // compute inverse of r
-        let r_inv: blstrs::Scalar = bls::new_blstrs_scalar(&r.clone().try_into().unwrap()).invert().unwrap();
-        let sigma_prime: blstrs::Gt = sigma * r_inv;
+        let y_inv = y_scal.invert().unwrap();
+        let sigma_prime: blstrs::Gt = sigma * y_inv;
 
         // PRE Re-Encryption
         let (ct, sym_ct, nonce) = c3;
         let c3_prime = gamal::pre_re_enc(&ct, &k_r);
 
-        let report: (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext) = (c2.clone(), r.try_into().unwrap(), ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), *nonce));
+        let report: (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext) = (c2.clone(), k_f, ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), *nonce));
 
 
         (message, moderator_id, report)
