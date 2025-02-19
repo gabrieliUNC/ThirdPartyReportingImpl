@@ -81,6 +81,10 @@ name = "mod_priv_read"
 harness = false
 
 [[bench]]
+name = "mod_priv_report"
+harness = false
+
+[[bench]]
 name = "mod_priv_moderate"
 harness = false
 
