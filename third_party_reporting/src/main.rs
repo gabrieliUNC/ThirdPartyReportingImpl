@@ -169,8 +169,11 @@ pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
     // Process messages
     let sigma_st = basic::test_basic_process(num_clients, msg_size, &c1c2ad, &platform, true);
 
-    // Read messages and generate reports
-    let reports = basic::test_basic_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+    // Read messages and generate report docs
+    let rds = basic::test_basic_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+
+    // Generate reports
+    let reports = basic::test_report(num_clients, &rds, true);
 
     // Moderate reports
     basic::test_basic_moderate(num_clients, &reports, &moderators, true);

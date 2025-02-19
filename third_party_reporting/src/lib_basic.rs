@@ -16,6 +16,7 @@ type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
+type Report = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext);
 
 // Moderator Properties
 pub struct Moderator {
@@ -144,15 +145,21 @@ impl Client {
         (c1, c2, moderator_id)
     }
     
-    pub fn read(msg_key: &Key<Aes256Gcm>, _pks: &Vec<Point>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, u32)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, _pks: &Vec<Point>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, u32)) -> (String, u32, Report) {
         let (ctx, ad) = st;
 
         let (message, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
-        let report: ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = (k_f, c2.clone(), ctx.clone(), sigma.clone());
+        let rd: Report = (k_f, c2.clone(), ctx.clone(), sigma.clone());
 
 
-        (message, *ad, report)
+        (message, *ad, rd)
+    }
+
+    pub fn report_gen(msg: &String, rd: &Report) -> Report {
+        let report = rd;
+
+        report.clone()
     }
 }
 
@@ -297,9 +304,9 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 }
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> {
+pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, Report)> {
     // Receive messages
-    let mut reports: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> = Vec::with_capacity(num_clients);
+    let mut rds: Vec<(String, u32, Report)> = Vec::with_capacity(num_clients);
     // Receive message i from client i to be moderated by randomly selected moderator mod_i
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
@@ -309,7 +316,22 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
         if print {
             println!("Received message: {}", message);
         }
-        reports.push((message, ad, report));
+        rds.push((message, ad, report));
+    }
+
+    rds
+}
+
+pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: bool) -> Vec<(String, u32, Report)> {
+    let mut reports: Vec<(String, u32, Report)> = Vec::with_capacity(num_clients);
+
+    for i in 0..num_clients {
+        let (msg, mod_id, rd) = &rds[i];
+        reports.push((msg.clone(), *mod_id, Client::report_gen(&msg, &rd)));
+
+        if print {
+            println!("Generated report for message: {}", msg);
+        }
     }
 
     reports
