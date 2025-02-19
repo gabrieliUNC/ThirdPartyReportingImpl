@@ -55,6 +55,9 @@ harness = false
 name = "basic_read"
 harness = false
 
+[[bench]]
+name = "basic_report"
+harness = false
 
 [[bench]]
 name = "basic_moderate"
