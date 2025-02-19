@@ -88,7 +88,10 @@ pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderator
     let sigma_st = constant_mod_priv::test_process(num_clients, msg_size, &c1c2ad, &platform, true);
 
     // Read messages
-    let reports = constant_mod_priv::test_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+    let report_docs = constant_mod_priv::test_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+
+    // Generate reports
+    let reports = constant_mod_priv::test_report(num_clients, &report_docs, true);
 
     // Moderate reports
     constant_mod_priv::test_moderate(num_clients, &reports, &moderators, true);
