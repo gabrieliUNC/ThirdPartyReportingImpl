@@ -130,7 +130,10 @@ pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
     let sigma_st = mod_priv::test_process(num_clients, msg_size, &c1c2ad, &platform, true);
 
     // Read messages
-    let reports = mod_priv::test_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+    let rds = mod_priv::test_read(num_clients, &c1c2ad, &sigma_st, &clients, &pks, true);
+
+    // Generate reports
+    let reports = mod_priv::test_report(num_clients, &rds, true);
 
     // Moderate reports
     mod_priv::test_moderate(num_clients, &reports, &moderators, true);

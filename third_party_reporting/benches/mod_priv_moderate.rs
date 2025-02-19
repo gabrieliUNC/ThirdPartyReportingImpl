@@ -8,7 +8,7 @@ use third_party_reporting::lib_common::*;
 
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
-
+type Report = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext);
 
 pub fn bench_mod_priv_moderate(c: &mut Criterion) {
     // Setup platforms and moderators
@@ -31,13 +31,16 @@ pub fn bench_mod_priv_moderate(c: &mut Criterion) {
     let sigma_st = mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
 
     // Read messages
-    let mut reports: Vec<Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))>> = Vec::new();
+    let mut reports: Vec<Vec<(String, u32, Report)>> = Vec::new();
     // reports[i][j] = report on message j to moderator for platform i
     for i in 0..moderators.len() {
-        let mut tmp: Vec<(String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext))> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        let mut tmp: Vec<(String, u32, Report)> = Vec::with_capacity(MSG_SIZE_SCALE.len());
         for (j, _msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
-            let report = mod_priv::test_read(1, &c1c2ad[i][j], &sigma_st[i][j], &clients, &pks[i], false);
-            tmp.push(report[0].clone());
+            let rds = mod_priv::test_read(1, &c1c2ad[i][j], &sigma_st[i][j], &clients, &pks[i], false);
+
+            // Generate reports
+            let reports = mod_priv::test_report(1, &rds, false);
+            tmp.push(reports[0].clone());
         }
         reports.push(tmp);
     }
