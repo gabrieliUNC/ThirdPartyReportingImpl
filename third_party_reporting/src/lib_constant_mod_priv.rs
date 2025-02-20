@@ -76,10 +76,11 @@ impl Moderator {
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
         // H(c2, ctx)^k
-        let hashed_g1 = (hashed_g1 * (*k)).to_affine();
+        let hashed_g1 = (hashed_g1 * (*k));
+        // H(c2, ctx)^(k*r')
+        let hashed_g1 = hashed_g1 * r_prime;
         
-        let maybe_sigma = blstrs::pairing(&hashed_g1, &blstrs::G2Affine::generator());
-        let maybe_sigma = maybe_sigma * r_prime;
+        let maybe_sigma = blstrs::pairing(&hashed_g1.to_affine(), &blstrs::G2Affine::generator());
 
         // Verify committment
         let k_f = r;
