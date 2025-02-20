@@ -303,12 +303,13 @@ impl Client {
         let (c2, k_f, ctx, sigma, pk_b, y, k_r, c3) = rd;
 
         let y_scal = blstrs::Scalar::from_bytes_le(&y).unwrap();
-
-        // compute r inverse
-        let sigma_prime: blstrs::Gt = blstrs::pairing(&sigma, &pk_b);
-
         let y_inv = y_scal.invert().unwrap();
-        let sigma_prime: blstrs::Gt = sigma_prime * y_inv;
+
+        // sigma^(y_inv)
+        let sigma = sigma * y_inv;
+
+        // e(sigma^(y_inv), pk_b) = e(sigma, pk_b)^y_inv
+        let sigma_prime: blstrs::Gt = blstrs::pairing(&sigma.to_affine(), &pk_b);
 
         // PRE Re-Encryption
         let (ct, sym_ct, nonce) = c3;
