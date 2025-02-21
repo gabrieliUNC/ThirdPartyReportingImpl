@@ -75,11 +75,10 @@ impl Moderator {
 
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        // H(c2, ctx)^k
-        let hashed_g1 = (hashed_g1 * (*k));
+
         // H(c2, ctx)^(k*r')
-        let hashed_g1 = hashed_g1 * r_prime;
-        
+        let hashed_g1 = hashed_g1 * (*k * r_prime);
+
         let maybe_sigma = blstrs::pairing(&hashed_g1.to_affine(), &blstrs::G2Affine::generator());
 
         // Verify committment
@@ -126,31 +125,6 @@ impl Platform {
     }
 
 
-    pub fn old_process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &(Point, blstrs::G2Affine), ctx: &Vec<u8>) -> (blstrs::Gt, (Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) {
-        let (pk_a, pk_b) = ad;
-        
-        let rng = thread_rng();
-        let r_prime = blstrs::Scalar::random(rng);
-
-
-        // Compute H(c2, ctx)
-        let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        // H(c2, ctx)^k_p
-        let hashed_g1 = hashed_g1 * k_p;
-        // H(c2, ctx)^(k_p * r')
-        let hashed_g1 = hashed_g1 * r_prime;
-            
-
-        // Compute pairing
-        let sigma: blstrs::Gt = blstrs::pairing(&hashed_g1.to_affine(), pk_b);
-
-        // PRE Scheme
-        let c3 = gamal::pre_enc(pk_a, &r_prime.to_bytes_le().to_vec());
-
-
-        (sigma, (c3, *pk_a, *pk_b, ctx.clone()))
-    }
-
 
 
     pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &(Point, blstrs::G2Affine), ctx: &Vec<u8>) -> (blstrs::G1Affine, State) {
@@ -162,11 +136,9 @@ impl Platform {
 
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        // H(c2, ctx)^k_p
-        let hashed_g1 = hashed_g1 * k_p;
+
         // H(c2, ctx)^(k_p * r')
-        let sigma = hashed_g1 * r_prime;
-            
+        let sigma = hashed_g1 * (k_p * r_prime);
 
         // PRE Scheme
         let c3 = gamal::pre_enc(pk_a, &r_prime.to_bytes_le().to_vec());
@@ -246,34 +218,6 @@ impl Client {
         (c1, c2, (pk_a, pk_b))
     }
   
-    
-    pub fn old_read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::Gt, st: &(Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) -> (String, u32, (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext)) {
-        let (c3, pk_a, pk_b, ctx) = st;
-        let (message, moderator_id, y, k_r, k_f) = Self::ccae_dec(msg_key, c1, c2);
-
-        let (_pk1, pk2, _k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()];
-
-
-        // Ensure this message is reportable
-        assert!((&k_r * pk_a) == pk2);
-
-
-        let y_scal = blstrs::Scalar::from_bytes_le(&y).unwrap();
-        assert!((pk_proc * y_scal).to_affine() == *pk_b);
-        
-        // compute inverse of r
-        let y_inv = y_scal.invert().unwrap();
-        let sigma_prime: blstrs::Gt = sigma * y_inv;
-
-        // PRE Re-Encryption
-        let (ct, sym_ct, nonce) = c3;
-        let c3_prime = gamal::pre_re_enc(&ct, &k_r);
-
-        let report: (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext) = (c2.clone(), k_f, ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), *nonce));
-
-
-        (message, moderator_id, report)
-    }
 
 
     pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::G1Affine, st: &(Ciphertext, Point, blstrs::G2Affine, Vec<u8>)) -> (String, u32, Report_Doc) {
