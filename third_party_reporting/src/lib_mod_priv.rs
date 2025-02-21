@@ -191,24 +191,7 @@ impl Client {
     }
 
 
-    pub fn old_read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Ciphertext, st: &(Vec<u8>, Point)) -> (String, u32, ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) {
-        let (ctx, pk) = st;
-        let (message, moderator_id, k_f, k_r) = Self::ccae_dec(msg_key, c1, c2);
 
-        let pk2 = pks[usize::try_from(moderator_id).unwrap()].1;
-
-        // Ensure this message is reportable
-        assert!((&k_r * pk) == pk2);
-        
-        let (ct, sym_ct, nonce) = sigma;
-        let sigma_r = gamal::pre_re_enc(ct, &k_r);
-
-
-        let report: ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = (k_f, c2.clone(), ctx.clone(), (sigma_r, sym_ct.to_vec(), *nonce));
-
-
-        (message, moderator_id, report)
-    }
 }
 
 
