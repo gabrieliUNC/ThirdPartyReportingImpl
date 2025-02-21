@@ -17,7 +17,6 @@ use blstrs as blstrs;
 use group::Curve;
 use group::prime::PrimeCurveAffine;
 use ff::Field;
-use crate::lib_blst as bls;
 
 
 type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
