@@ -1,1 +1,0 @@
-(Vec<u8>, [u8; 32], Vec<u8>, Gt, ((RistrettoPoint, RistrettoPoint), Vec<u8>, hmac::digest::generic_array::GenericArray<u8, UInt<UInt<UInt<UInt<UTerm, B1>, B1>, B0>, B0>>))

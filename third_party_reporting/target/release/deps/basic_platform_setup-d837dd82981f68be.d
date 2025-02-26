@@ -1,5 +1,0 @@
-/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/basic_platform_setup-d837dd82981f68be: benches/basic_platform_setup.rs
-
-/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/basic_platform_setup-d837dd82981f68be.d: benches/basic_platform_setup.rs
-
-benches/basic_platform_setup.rs:
