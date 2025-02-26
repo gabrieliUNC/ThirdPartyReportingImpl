@@ -1,0 +1,10 @@
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/libcrypto_box-7b6befe3edc247c7.rmeta: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md
+
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/libcrypto_box-7b6befe3edc247c7.rlib: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md
+
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/crypto_box-7b6befe3edc247c7.d: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md
+
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md:

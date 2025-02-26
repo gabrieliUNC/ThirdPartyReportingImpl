@@ -1,1 +1,4 @@
-target
+target/CACHEDIR.TAG
+target/debug
+target/release
+target/tmp

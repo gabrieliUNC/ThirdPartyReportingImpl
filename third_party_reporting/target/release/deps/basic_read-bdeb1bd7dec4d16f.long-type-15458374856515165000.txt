@@ -1,0 +1,1 @@
+&((curve25519_dalek::ristretto::RistrettoPoint, curve25519_dalek::ristretto::RistrettoPoint), Vec<u8>, generic_array::GenericArray<u8, typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>, typenum::bit::B1>, typenum::bit::B0>, typenum::bit::B0>>)

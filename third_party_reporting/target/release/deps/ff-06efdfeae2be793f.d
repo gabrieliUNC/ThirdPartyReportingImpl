@@ -1,0 +1,9 @@
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/libff-06efdfeae2be793f.rmeta: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/batch.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/helpers.rs
+
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/libff-06efdfeae2be793f.rlib: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/batch.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/helpers.rs
+
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/release/deps/ff-06efdfeae2be793f.d: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/batch.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/helpers.rs
+
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/lib.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/batch.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ff-0.13.0/src/helpers.rs:

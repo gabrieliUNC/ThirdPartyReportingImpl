@@ -1,0 +1,8 @@
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/debug/deps/libcrypto_box-8eb35d0e2fb22b79.rmeta: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md
+
+/Users/stick/Coding/ThirdPartyReportingImpl/ThirdPartyReportingImpl/third_party_reporting/target/debug/deps/crypto_box-8eb35d0e2fb22b79.d: /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs /Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md
+
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/lib.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/public_key.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/secret_key.rs:
+/Users/stick/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crypto_box-0.9.1/src/../README.md:
