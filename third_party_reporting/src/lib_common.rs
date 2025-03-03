@@ -5,7 +5,7 @@ type HmacSha256 = Hmac<Sha256>;
 
 
 pub const CTX_LEN: usize = 100;
-pub const MOD_SCALE: [usize; 1] = [2048];
+pub const MOD_SCALE: [usize; 18] = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 1 << 15, 1 << 16, 1 << 17];
 pub const MSG_SIZE_SCALE: [usize; 1] = [4096];
 
 // Committment Scheme
