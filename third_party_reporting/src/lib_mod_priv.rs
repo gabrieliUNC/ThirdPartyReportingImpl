@@ -158,8 +158,6 @@ impl Client {
         let pk = &s * pk1;
         let k_r = k1_2 * s.invert();
 
-        assert!((&k_r * pk) == *pk2);
-
         let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r);       
 
         (c1, c2, pk)

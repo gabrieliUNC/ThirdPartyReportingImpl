@@ -9,8 +9,7 @@ type Point = RistrettoPoint;
 
 pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>) {
     let (c1, c2, ad) = &c1c2ad[0];
-    let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), CTX_LEN);
-    mod_priv::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &(ctx.as_bytes().to_vec()));
+    mod_priv::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &(CTX.to_vec()));
 }
 
 

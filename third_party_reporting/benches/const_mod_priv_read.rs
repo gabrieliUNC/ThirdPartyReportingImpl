@@ -11,9 +11,9 @@ type Point = RistrettoPoint;
 type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
-type State = (Ciphertext, Point, blstrs::G2Affine, Vec<u8>);
+type State = (Ciphertext, Point, Vec<u8>);
 
-pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, (Point, blstrs::G2Affine))>, pks: &Vec<PublicKey>, sigma_st: &Vec<(blstrs::G1Affine, State)>) {
+pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(blstrs::G1Affine, State)>) {
     let (c1, c2, _ad) = &c1c2ad[0];
     let (sigma, st) = &sigma_st[0];
     constant_mod_priv::Client::read(&clients[0].msg_key, pks, &c1, &c2, &sigma, &st);

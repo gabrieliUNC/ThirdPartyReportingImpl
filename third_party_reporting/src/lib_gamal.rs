@@ -81,7 +81,7 @@ pub(crate) fn pzip(p: Point) -> [u8; 32] {
     p.compress().to_bytes()
 }
 
-pub(crate) fn elgamal_keygen() -> (Scalar, Point) {
+pub fn elgamal_keygen() -> (Scalar, Point) {
     let x: Scalar = Scalar::random(&mut OsRng);
     let h: Point = &x * G;
     (x, h)
@@ -103,7 +103,7 @@ pub(crate) fn elgamal_dec(sk: &Scalar, ct: &Ciphertext) -> Point {
     ct.1 + (Scalar::zero() - sk) * ct.0 // m * g^(x*r) / g^(r/x)
 }
 
-pub(crate) fn encrypt(pk: &Point, m: &Vec<u8>) -> (Ciphertext, Vec<u8>, Nonce<U12>) {
+pub fn encrypt(pk: &Point, m: &Vec<u8>) -> (Ciphertext, Vec<u8>, Nonce<U12>) {
     // Choose random point p to encrypt with ElGamal. H(p) is the symmetric key
     // (we model H as a random oracle)
     let p = Point::random(&mut OsRng);

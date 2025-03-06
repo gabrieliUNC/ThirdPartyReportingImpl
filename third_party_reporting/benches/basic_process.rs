@@ -6,8 +6,7 @@ use third_party_reporting::lib_common::*;
 
 pub fn process(platform: &basic::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>) {
     let (c1, c2, ad) = &c1c2ad[0];
-    let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), CTX_LEN);
-    basic::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
+    basic::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(CTX.to_vec()));
 }
 
 
