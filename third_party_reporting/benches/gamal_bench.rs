@@ -6,7 +6,7 @@ use rand::distributions::{Alphanumeric, DistString};
 
 pub fn bench_gamal(c: &mut Criterion) {
     let mut keys = gamal::elgamal_keygen();
-    let sigma = Alphanumeric.sample_string(&mut rand::thread_rng(), 256);
+    let sigma = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
 
     c.bench_function("gamal-enc", |b| b.iter(|| gamal::encrypt(&keys.1, black_box(&sigma.as_bytes().to_vec()))));
 }
