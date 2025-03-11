@@ -18,7 +18,7 @@ hmac = "0.12.1"
 digest = { version = "0.10.3", features = ["mac"] }
 rand_core = "0.5"
 sha2 = "0.10"
-curve25519-dalek = "3"
+curve25519-dalek = { version = "4.0.0-rc.0", features = ['precomputed-tables', 'alloc', 'zeroize', 'rand_core'] }
 rand = "0.8.5"
 sha3 = "0.10.8"
 generic-array = "1.0.0"

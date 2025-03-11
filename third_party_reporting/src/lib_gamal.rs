@@ -1,5 +1,4 @@
-extern crate rand_core;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use sha2::{Sha256, Digest};
 use curve25519_dalek::constants;
 use curve25519_dalek::ristretto::{RistrettoPoint, RistrettoBasepointTable};
@@ -18,7 +17,8 @@ type Point = RistrettoPoint;
 // Proxy Re-Encryption El Gamal Scheme
 pub(crate) fn pre_elgamal_enc(pk: &Point, m: &Point) -> Ciphertext {
     let r = Scalar::random(&mut OsRng);
-    let c1 = &r * G + m;
+
+    let c1 = RistrettoPoint::mul_base(&r) + m;
     let c2 = &r * pk;
 
     (c1, c2) // (g^(r) * m, g^(x*r)
@@ -75,7 +75,6 @@ pub(crate) fn pre_dec(sk: &Scalar, ct: &(Ciphertext, Vec<u8>), nonce: &Nonce<U12
 
 // El Gamal Scheme
 
-pub(crate) const G: &RistrettoBasepointTable = &constants::RISTRETTO_BASEPOINT_TABLE;
 
 pub(crate) fn pzip(p: Point) -> [u8; 32] {
     p.compress().to_bytes()
@@ -83,13 +82,13 @@ pub(crate) fn pzip(p: Point) -> [u8; 32] {
 
 pub fn elgamal_keygen() -> (Scalar, Point) {
     let x: Scalar = Scalar::random(&mut OsRng);
-    let h: Point = &x * G;
+    let h: Point = RistrettoPoint::mul_base(&x);
     (x, h)
 }
 
-pub(crate) fn elgamal_enc(pk: &Point, m: &Point) -> Ciphertext {
+pub fn elgamal_enc(pk: &Point, m: &Point) -> Ciphertext {
     let r = Scalar::random(&mut OsRng);
-    let c1 = &r*G;
+    let c1 = RistrettoPoint::mul_base(&r);
     let c2 = &r*pk + m;
 
     (c1, c2)
@@ -100,7 +99,7 @@ pub(crate) fn elgamal_enc(pk: &Point, m: &Point) -> Ciphertext {
 //      ct:  a compressed (Point, Point) ciphertext
 // Returns the decrypted chosen mask
 pub(crate) fn elgamal_dec(sk: &Scalar, ct: &Ciphertext) -> Point {
-    ct.1 + (Scalar::zero() - sk) * ct.0 // m * g^(x*r) / g^(r/x)
+    ct.1 + (Scalar::ZERO - sk) * ct.0 // m * g^(x*r) / g^(r/x)
 }
 
 pub fn encrypt(pk: &Point, m: &Vec<u8>) -> (Ciphertext, Vec<u8>, Nonce<U12>) {

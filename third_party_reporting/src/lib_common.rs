@@ -1,6 +1,7 @@
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use rand_core::RngCore;
+use rand::RngCore;
+use rand::rngs::OsRng;
 type HmacSha256 = Hmac<Sha256>;
 
 
@@ -30,7 +31,7 @@ pub(crate) fn com_open(c: &Vec<u8>, m: &str, r: &[u8]) -> bool {
 // Mac Scheme
 pub fn mac_keygen() -> [u8; 32] {
     let mut k: [u8; 32] = [0; 32];
-    rand_core::OsRng.fill_bytes(&mut k);
+    OsRng.fill_bytes(&mut k);
 
     k
 }

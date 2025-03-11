@@ -11,7 +11,7 @@ use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 
 use blstrs as blstrs;
 use group::Curve;
