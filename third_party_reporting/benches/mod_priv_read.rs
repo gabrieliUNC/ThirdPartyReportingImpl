@@ -7,11 +7,10 @@ use generic_array::typenum::U12;
 use third_party_reporting::lib_mod_priv as mod_priv;
 
 type Point = RistrettoPoint;
-type PublicKey = (Point, Point, Scalar);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
-pub fn read(clients: &Vec<mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, Point))>) {
-    let (c1, c2, _ad) = &c1c2ad[0];
+pub fn read(clients: &Vec<mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>)>, pks: &Vec<Point>, sigma_st: &Vec<(Vec<Vec<u8>>, Vec<u8>)>) {
+    let (c1, c2) = &c1c2ad[0];
     let (sigma, st) = &sigma_st[0];
     mod_priv::Client::read(&clients[0].msg_key, &pks, &c1, &c2, &sigma, &st);
 }

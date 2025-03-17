@@ -9,7 +9,7 @@ use curve25519_dalek::scalar::Scalar;
 
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
-type Report_Doc = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext, Scalar);
+type Report_Doc = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext);
 
 pub fn bench_mod_priv_report(c: &mut Criterion) {
     // Setup platforms and moderators

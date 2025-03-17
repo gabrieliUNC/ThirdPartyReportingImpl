@@ -8,15 +8,16 @@ use third_party_reporting::lib_constant_mod_priv as constant_mod_priv;
 use blstrs as blstrs;
 
 type Point = RistrettoPoint;
-type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
+
+type PublicKey = (Point, blstrs::G2Affine);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
-type State = (Ciphertext, Point, Vec<u8>);
+type State = (blstrs::Scalar, Vec<u8>);
 
-pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(blstrs::G1Affine, State)>) {
-    let (c1, c2, _ad) = &c1c2ad[0];
+pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(blstrs::G1Affine, State)>) {
+    let (c1, c2) = &c1c2ad[0];
     let (sigma, st) = &sigma_st[0];
-    constant_mod_priv::Client::read(&clients[0].msg_key, pks, &c1, &c2, &sigma, &st);
+    constant_mod_priv::Client::read(&clients[0].msg_key, pks, &c1, &c2, &sigma, st);
 }
 
 

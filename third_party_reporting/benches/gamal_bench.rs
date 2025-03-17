@@ -7,9 +7,9 @@ use rand::distributions::{Alphanumeric, DistString};
 pub fn bench_gamal(c: &mut Criterion) {
     let mut keys = gamal::elgamal_keygen();
     let m = gamal::elgamal_keygen();
-    let sigma = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
+    let sigma = Alphanumeric.sample_string(&mut rand::thread_rng(), 32).as_bytes().to_vec();
 
-    c.bench_function("gamal-enc", |b| b.iter(|| gamal::elgamal_enc(&keys.1, black_box(&m.1))));
+    c.bench_function("gamal-enc", |b| b.iter(|| gamal::encrypt(&keys.1, black_box(&sigma))));
 }
 
 criterion_group!(benches, bench_gamal);

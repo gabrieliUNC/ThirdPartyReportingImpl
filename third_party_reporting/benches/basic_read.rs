@@ -6,13 +6,6 @@ use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_common::*;
 
 type Point = RistrettoPoint;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
-
-pub fn read(clients: &Vec<basic::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, pks: &Vec<Point>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>) {
-    let (c1, c2, _ad) = &c1c2ad[0];
-    let (sigma, st) = &sigma_st[0];
-    basic::Client::read(&clients[0].msg_key, &pks, &c1, &c2, &sigma, &st);
-}
 
 
 pub fn bench_basic_read(c: &mut Criterion) {
@@ -38,7 +31,9 @@ pub fn bench_basic_read(c: &mut Criterion) {
     for (i, num_moderators) in MOD_SCALE.iter().enumerate() {
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             group.bench_with_input(format!("basic.read() message of size {} with {} moderators", msg_size, num_moderators), msg_size, |b, &_msg_size| {
-                b.iter(|| read(&clients, &c1c2ad[i][j], &pks[i], &sigma_st[i][j]))
+                let (c1, c2, _ad) = &c1c2ad[i][j][0];
+                let (sigma, st) = &sigma_st[i][j][0];
+                b.iter(|| basic::Client::read(&clients[0].msg_key, &pks[i], &c1, &c2, &sigma, &st));
             });
         }
     }
