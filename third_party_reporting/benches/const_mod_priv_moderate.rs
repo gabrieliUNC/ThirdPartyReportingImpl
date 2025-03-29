@@ -54,7 +54,7 @@ pub fn bench_const_mod_priv_moderate(c: &mut Criterion) {
             group.bench_with_input(format!("const-mod-priv.moderate() message of size {} with {} moderators", msg_size, num_moderators), msg_size, |b, &_msg_size| {
                 let (_message, moderator_id, report) = &reports[i][j];
                 let k = usize::try_from(*moderator_id).unwrap();
-                b.iter(|| constant_mod_priv::Moderator::moderate(&moderators[i][k].sk_enc, &moderators[i][k].k, k, &ms[j][0], &report))
+                b.iter(|| constant_mod_priv::Moderator::moderate(&moderators[i][k].sk_enc, &moderators[i][k].k, &moderators[i][k].sk_p, k, &ms[j][0], &report))
             });
         }
     }

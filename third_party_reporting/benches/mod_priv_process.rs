@@ -7,9 +7,9 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 
 type Point = RistrettoPoint;
 
-pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>)>) {
-    let (c1, c2) = &c1c2ad[0];
-    mod_priv::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, &None, &(CTX.to_vec()));
+pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>) {
+    let (c1, c2, ad) = &c1c2ad[0];
+    mod_priv::Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &(CTX.to_vec()));
 }
 
 

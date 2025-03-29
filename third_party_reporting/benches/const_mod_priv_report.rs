@@ -11,7 +11,7 @@ use blstrs as blstrs;
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
-type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::Scalar, (Point, blstrs::G2Affine));
+type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::G2Affine, Scalar, Ciphertext);
 
 pub fn bench_const_mod_priv_report(c: &mut Criterion) {
     // Setup platforms and moderators
