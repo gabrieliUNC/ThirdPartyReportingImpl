@@ -11,6 +11,7 @@ use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use std::mem;
 
 type Point = RistrettoPoint;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
@@ -233,15 +234,22 @@ pub fn test_basic_init_messages(num_clients: usize, msg_size: usize) -> Vec<Stri
 
 // send(k, m, pk_i)
 pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<Client>, ms: &Vec<String>, print: bool) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
+    // Track communication cost in bytes
+    let mut cost: usize = 0;
+
     let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(num_clients);
     // send message i to client i to be moderated by random mod
     let mut rng = thread_rng();
     for i in 0..num_clients {
         let mod_i = rng.gen_range(0..num_moderators);
         let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap());
-        
+
         if print {
-            println!("Sent message: {}", &ms[i]);
+            // Calculate communication cost
+            // cost = size of elements in byte vectors
+            // + 1 u32
+            cost = c1.len() + c2.len() + mem::size_of::<u32>();
+            println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
         c1c2ad.push((c1, c2, ad));
     }
@@ -270,15 +278,22 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> {
 
 // process(k_p, ks, c1, c2, ad, ctx)
 pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform, print: bool) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
+    // Keep track of communication cost
+    let mut cost: usize = 0;
+
     let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
     // Platform processes message
     for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
         let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
-        if print {
-            println!("Adding context: {}", ctx);
-        }
         let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
+
+
+        if print {
+            // communication cost = size of signature (stored in byte vector) + ctx size + u32
+            cost = sigma.len() + CTX_LEN + mem::size_of::<u32>();
+            println!("Adding context: {} with communication cost: {}", ctx, &cost);
+        }
 
         sigma_st.push((sigma, st));
     }
@@ -306,6 +321,9 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 
 // read(k, pks, c1, c2, sigma, st)
 pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, Report)> {
+    // Calculate communication cost
+    let mut cost: usize = 0;
+    
     // Receive messages
     let mut rds: Vec<(String, u32, Report)> = Vec::with_capacity(num_clients);
     // Receive message i from client i to be moderated by randomly selected moderator mod_i
@@ -315,7 +333,25 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
         let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            println!("Received message: {}", message);
+            let (k_f, c2, ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
+
+            // cost = sizeof message + u32 + sizeof report
+            cost = message.len() + mem::size_of::<u32>();
+            // k_f (32 bytes)
+            cost += 32;
+            // c2 (Vector of bytes)
+            cost += c2.len();
+            // ctx (FIXED CONSTANT)
+            cost += CTX_LEN;
+            // u and v are Ristretto Points which are 32 bytes each
+            cost += 2 * 32;
+            // sym_ct is the encryption ot the message in vector of bytes format
+            cost += sym_ct.len();
+            // nonce is 96 bits (12 bytes)
+            cost += 12;
+
+            println!("Received message: {} with cost: {}", message, &cost);
         }
         rds.push((message, ad, report));
     }
@@ -328,11 +364,30 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: 
 
     for i in 0..num_clients {
         let (msg, mod_id, rd) = &rds[i];
-        reports.push((msg.clone(), *mod_id, Client::report_gen(&msg, &rd)));
+        let report = Client::report_gen(&msg, &rd);
 
         if print {
-            println!("Generated report for message: {}", msg);
+            let mut cost: usize = 0;
+            let (k_f, c2, ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
+
+            // k_f is 32 bytes
+            cost += 32;
+            // c2 (Vector of bytes)
+            cost += c2.len();
+            // ctx (FIXED CONSTANT)
+            cost += CTX_LEN;
+            // u and v are Ristretto Points which are 32 bytes each
+            cost += 2 * 32;
+            // sym_ct is the encryption ot the message in vector of bytes format
+            cost += sym_ct.len();
+            // nonce is 96 bits (12 bytes)
+            cost += 12;
+
+            println!("Generated report for message: {} with cost: {}", msg, &cost);
         }
+
+        reports.push((msg.clone(), *mod_id, report));
     }
 
     reports
@@ -346,7 +401,9 @@ pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8;
         let ad = usize::try_from(*ad).unwrap();
         let ctx = Moderator::moderate(&moderators[ad].sk_enc, &moderators[ad].sk_p, &message, &report);
         if print {
-            println!("Moderated message successfully with context: {:?}", ctx);
+            // cost is at most the size of the ctx
+            // otherwise nothing if the signature does not verify
+            println!("Moderated message successfully with context: {:?} and cost: {}", ctx, CTX_LEN);
         }
     }
 

@@ -30,13 +30,13 @@ struct Args {
     #[arg(long, default_value_t = false)]
     const_priv: bool,
 
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 1)]
     num_clients: usize,
 
     #[arg(long, default_value_t = 10)]
     num_moderators: usize,
 
-    #[arg(long, default_value_t = 4096)]
+    #[arg(long, default_value_t = 100)]
     msg_size: usize,
 
     #[arg(long, default_value_t = false)]
