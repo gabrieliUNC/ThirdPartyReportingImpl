@@ -280,7 +280,7 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             let mut cost: usize = 0;
             // c1 and c2 are vectors of bytes
             cost += c1.len() + c2.len();
-            // ad is a 32 byte Public Key
+            // ad is a 32 byte Ristretto Point
             cost += 32;
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
