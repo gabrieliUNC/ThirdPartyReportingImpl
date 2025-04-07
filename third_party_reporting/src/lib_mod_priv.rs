@@ -2,6 +2,7 @@ use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit},
     Aes256Gcm, Nonce, Key
 };
+use std::mem;
 use bincode;
 use crate::lib_common::*;
 use crate::lib_gamal as gamal;
@@ -275,7 +276,14 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
         let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap(), &pki);
         
         if print {
-            println!("Sent message: {}", &ms[i]);
+            // Communication cost
+            let mut cost: usize = 0;
+            // c1 and c2 are vectors of bytes
+            cost += c1.len() + c2.len();
+            // ad is a 32 byte Public Key
+            cost += 32;
+
+            println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
         c1c2ad.push((c1, c2, ad));
     }
@@ -309,11 +317,21 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
     for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
         let ctx = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
-        if print {
-            println!("Adding context: {}", ctx);
-        }
         let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &ctx.as_bytes().to_vec());
 
+        if print {
+            // Communication cost
+            let mut cost: usize = 0;
+            // Sigma is a variable byte vector
+            // with its length increasing linearly
+            // with respect to the number of moderators
+            // cost += 32 bytes (mac digest) * num_moderators
+
+            // State is a 32 byte public key + ctx
+            cost += 32 + CTX_LEN;
+
+            println!("Adding context: {} with cost: {}", ctx, &cost);
+        }
         sigma_st.push((sigma, st));
     }
 
@@ -348,7 +366,26 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
         let (message, ad, rd) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            println!("Received message: {}", message);
+            // Communication cost
+            let mut cost: usize = 0;
+            // message + u32
+            cost += message.len() + mem::size_of::<u32>();
+            // ReportDoc cost
+            let (k_f, c2, ctx, sigma, k_r) = rd.clone();
+            // k_f is 32 bytes
+            cost += 32;
+            // c2 is a byte vector
+            cost += c2.len();
+            cost += CTX_LEN;
+            // Sigma is a variable byte vector
+            // with its length increasing linearly
+            // with respect to the number of moderators
+            // cost += 32 bytes (mac digest) * num_moderators
+
+            // k_r is a 32 byte Scalar
+            cost += 32;
+
+            println!("Received message: {} with cost: {}", message, &cost);
         }
         rds.push((message, ad, rd));
     }
@@ -361,11 +398,33 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, ReportDoc)>, prin
 
     for i in 0..num_clients {
         let (message, mod_id, rd) = &rds[i];
-        reports.push((message.clone(), *mod_id, Client::report_gen(&message, &rd)));
+        let report = Client::report_gen(&message, &rd);
 
         if print {
-            println!("Generated report for message: {}", message);
+            let mut cost: usize = 0;
+            let (k_f, c2, ctx, sigma_prime) = report.clone();
+            
+            let ((u, v), sym_ct, nonce) = sigma_prime.clone();
+
+            // k_f is a 32 byte key
+            cost += 32;
+            // c2 is a byte vector
+            cost += c2.len();
+            cost += CTX_LEN;
+            // u and v are 32 byte points
+            cost += 2 * 32;
+            // sym_ct is a byte vector which is the encryption
+            // of the platform tag on the message
+            // this grows linearly with respect to the number of moderators
+            // 32 bytes (mac digest) * num_moderators
+            
+            // nonce is 12 bytes
+            cost += 12;
+
+            println!("Generated report for message: {} with cost: {}", message, &cost);
         }
+
+        reports.push((message.clone(), *mod_id, report));
     }
 
     reports
@@ -380,7 +439,8 @@ pub fn test_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8; 32], 
         let j = usize::try_from(*moderator_id).unwrap();
         let ctx = Moderator::moderate(&moderators[j].sk_enc, &moderators[j].sk_p, j, &message, &report);
         if print {
-            println!("Moderated message successfully with context: {:?}", ctx);
+            // Cost is either CTX_LEN or nothing if moderation fails
+            println!("Moderated message successfully with context: {:?} and cost: {}", ctx, CTX_LEN);
         }
     }
 
