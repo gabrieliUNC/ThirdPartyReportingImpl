@@ -83,7 +83,7 @@ impl Platform {
 
     pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Vec<u8>, (Vec<u8>, u32)) {
         let moderator_id: usize = ad.try_into().unwrap();
-        let (mac_key_i, mod_pk_i) = &ks[moderator_id];
+        let (mac_key_i, _mod_pk_i) = &ks[moderator_id];
         let sigma_pt = mac_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
 
@@ -158,7 +158,7 @@ impl Client {
         (message, *ad, rd)
     }
 
-    pub fn report_gen(msg: &String, rd: &Report) -> Report {
+    pub fn report_gen(_msg: &String, rd: &Report) -> Report {
         let report = rd;
 
         report.clone()
@@ -234,8 +234,6 @@ pub fn test_basic_init_messages(num_clients: usize, msg_size: usize) -> Vec<Stri
 
 // send(k, m, pk_i)
 pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<Client>, ms: &Vec<String>, print: bool) -> Vec<(Vec<u8>, Vec<u8>, u32)> {
-    // Track communication cost in bytes
-    let mut cost: usize = 0;
 
     let mut c1c2ad: Vec<(Vec<u8>, Vec<u8>, u32)> = Vec::with_capacity(num_clients);
     // send message i to client i to be moderated by random mod
@@ -245,6 +243,9 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
         let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap());
 
         if print {
+            // Track communication cost in bytes
+            let mut cost: usize = 0;
+
             // Calculate communication cost
             // cost = size of elements in byte vectors
             // + 1 u32
@@ -278,8 +279,6 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, u32)>>> {
 
 // process(k_p, ks, c1, c2, ad, ctx)
 pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, platform: &Platform, print: bool) -> Vec<(Vec<u8>, (Vec<u8>, u32))> {
-    // Keep track of communication cost
-    let mut cost: usize = 0;
 
     let mut sigma_st: Vec<(Vec<u8>, (Vec<u8>, u32))> = Vec::with_capacity(num_clients);
     // Platform processes message
@@ -290,6 +289,9 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
 
 
         if print {
+            // Keep track of communication cost
+            let mut cost: usize = 0;
+
             // communication cost = size of signature (stored in byte vector) + ctx size + u32
             cost = sigma.len() + CTX_LEN + mem::size_of::<u32>();
             println!("Adding context: {} with communication cost: {}", ctx, &cost);
@@ -321,8 +323,6 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 
 // read(k, pks, c1, c2, sigma, st)
 pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>, clients: &Vec<Client>, pks: &Vec<Point>, print: bool) -> Vec<(String, u32, Report)> {
-    // Calculate communication cost
-    let mut cost: usize = 0;
     
     // Receive messages
     let mut rds: Vec<(String, u32, Report)> = Vec::with_capacity(num_clients);
@@ -333,8 +333,12 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
         let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            let (k_f, c2, ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
+            // Calculate communication cost
+            let mut cost: usize = 0;
+
+
+            let (_k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let ((_u, _v), sym_ct, _nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
 
             // cost = sizeof message + u32 + sizeof report
             cost = message.len() + mem::size_of::<u32>();
@@ -368,8 +372,8 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: 
 
         if print {
             let mut cost: usize = 0;
-            let (k_f, c2, ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
+            let (_k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let ((_u, _v), sym_ct, _nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
 
             // k_f is 32 bytes
             cost += 32;

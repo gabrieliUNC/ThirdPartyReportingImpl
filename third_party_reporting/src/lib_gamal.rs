@@ -1,7 +1,6 @@
 use rand::rngs::OsRng;
 use sha2::{Sha256, Digest};
-use curve25519_dalek::constants;
-use curve25519_dalek::ristretto::{RistrettoPoint, RistrettoBasepointTable};
+use curve25519_dalek::ristretto::{RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs;
 use aes_gcm::{

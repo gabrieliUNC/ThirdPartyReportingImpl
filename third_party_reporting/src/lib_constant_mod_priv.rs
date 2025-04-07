@@ -25,7 +25,7 @@ type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
 type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
-type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::G2Affine, Scalar, Ciphertext);
+type ReportDoc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::G2Affine, Scalar, Ciphertext);
 type State = (Ciphertext, Point, Vec<u8>);
 
 
@@ -210,7 +210,7 @@ impl Client {
   
 
 
-    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::G1Affine, st: &(Ciphertext, Point, Vec<u8>)) -> (String, u32, Report_Doc) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::G1Affine, st: &(Ciphertext, Point, Vec<u8>)) -> (String, u32, ReportDoc) {
         let (c3, pk_a, ctx) = st;
         let (message, moderator_id, k_r, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
@@ -221,7 +221,7 @@ impl Client {
         assert!((&k_r * pk_a) == pk2);
 
         // Generate report documentation
-        let rd: Report_Doc = (c2.clone(), k_f.clone(), ctx.clone(), *sigma, pk_proc, k_r, c3.clone());
+        let rd: ReportDoc = (c2.clone(), k_f.clone(), ctx.clone(), *sigma, pk_proc, k_r, c3.clone());
 
 
         (message, moderator_id, rd)
@@ -229,7 +229,7 @@ impl Client {
 
 
     // type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
-    pub fn report_gen(msg: &String, rd: &Report_Doc) -> Report {
+    pub fn report_gen(msg: &String, rd: &ReportDoc) -> Report {
         let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = rd;
         let sigma_prime: blstrs::Gt = blstrs::pairing(&sigma, &pk_proc);
 
@@ -395,9 +395,9 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(blstrs::G1Affine, State)>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, Report_Doc)> {
+pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(blstrs::G1Affine, State)>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, ReportDoc)> {
     // Receive messages
-    let mut reports: Vec<(String, u32, Report_Doc)> = Vec::with_capacity(num_clients);
+    let mut reports: Vec<(String, u32, ReportDoc)> = Vec::with_capacity(num_clients);
     // Receive message i from client i to be moderated by randomly selected moderator mod_i
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
@@ -413,7 +413,7 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
     reports
 }
 
-pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, Report_Doc)>, print: bool) -> Vec<(String, u32, Report)> {
+pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, ReportDoc)>, print: bool) -> Vec<(String, u32, Report)> {
     let mut reports: Vec<(String, u32, Report)> = Vec::with_capacity(num_clients);
     for i in 0..num_clients {
         let (message, moderator_id, rd) = &report_docs[i];
