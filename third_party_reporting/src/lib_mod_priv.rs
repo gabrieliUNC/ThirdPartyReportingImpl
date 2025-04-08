@@ -276,12 +276,10 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
         let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap(), &pki);
         
         if print {
-            // Communication cost
-            let mut cost: usize = 0;
-            // c1 and c2 are vectors of bytes
-            cost += c1.len() + c2.len();
-            // ad is a 32 byte Ristretto Point
-            cost += 32;
+            // Additional Costs
+            // (1) Commitment to the Message
+            // (2) Moderator masked public key (element of G)
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad.compress());
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -320,17 +318,24 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
         let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &ctx.as_bytes().to_vec());
 
         if print {
-            // Communication cost
-            let mut cost: usize = 0;
-            // Sigma is a variable byte vector
-            // with its length increasing linearly
-            // with respect to the number of moderators
-            // cost += 32 bytes (mac digest) * num_moderators
+            // Additional Cost
+            // (1) Encrypted Platform signature
+            // which is a variable length 2d vector of size as follows:
+            // -- 24 bytes general layout (8 bytes for pointer, 8 bytes for len, 8 bytes for
+            // capacity)
+            // -- (32 bytes for hash digest + 8 bytes for pointer = 40 bytes) * (# moderators)
+            // + 2 Ristretto Points + 1 nonce
+            // (2) Moderator id
+            let (ctx, ad) = st.clone();
+            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = sigma.clone();
 
-            // State is a 32 byte public key + ctx
-            cost += 32 + CTX_LEN;
 
-            println!("Adding context: {} with cost: {}", ctx, &cost);
+            let mut cost: usize = mem::size_of_val(&ad.compress());
+
+            
+            cost += mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+
+            println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx), &cost);
         }
         sigma_st.push((sigma, st));
     }
@@ -366,25 +371,26 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
         let (message, ad, rd) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            // Communication cost
-            let mut cost: usize = 0;
-            // message + u32
-            cost += message.len() + mem::size_of::<u32>();
-            // ReportDoc cost
-            let (k_f, c2, ctx, sigma, k_r) = rd.clone();
-            // k_f is 32 bytes
-            cost += 32;
-            // c2 is a byte vector
-            cost += c2.len();
-            cost += CTX_LEN;
-            // Sigma is a variable byte vector
-            // with its length increasing linearly
-            // with respect to the number of moderators
-            // cost += 32 bytes (mac digest) * num_moderators
+            // Additional Costs
+            // (1) Moderator id
+            // (2) randomness for commitment
+            // (3) commitment 
+            // (4) sigma' (el-gamal ct of sigma)
+            // which is a variable length 2d vector of size as follows:
+            // -- 24 bytes general layout (8 bytes for pointer, 8 bytes for len, 8 bytes for
+            // capacity)
+            // -- (32 bytes for hash digest + 8 bytes for pointer = 40 bytes) * (# moderators)
+            // + 2 Ristretto Points + 1 nonce
+            // (5) ke_2 (proxy re-encryption Scalar)
 
-            // k_r is a 32 byte Scalar
-            cost += 32;
+            let (k_f, c2, _ctx, ct, k_r): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext, Scalar) = rd.clone();
+            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
 
+
+            let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
+            cost += mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+
+            cost += mem::size_of_val(&k_r);
             println!("Received message: {} with cost: {}", message, &cost);
         }
         rds.push((message, ad, rd));
@@ -401,25 +407,24 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, ReportDoc)>, prin
         let report = Client::report_gen(&message, &rd);
 
         if print {
-            let mut cost: usize = 0;
-            let (k_f, c2, ctx, sigma_prime) = report.clone();
-            
-            let ((u, v), sym_ct, nonce) = sigma_prime.clone();
+            // Additional Costs
+            // (1) Moderator id
+            // (2) randomness for commitment
+            // (3) commitment 
+            // (4) sigma' (el-gamal ct of sigma)
+            // which is a variable length 2d vector of size as follows:
+            // -- 24 bytes general layout (8 bytes for pointer, 8 bytes for len, 8 bytes for
+            // capacity)
+            // -- (32 bytes for hash digest + 8 bytes for pointer = 40 bytes) * (# moderators)
+            // + 2 Ristretto Points + 1 nonce
+            // (5) ke_2 (proxy re-encryption Scalar)
 
-            // k_f is a 32 byte key
-            cost += 32;
-            // c2 is a byte vector
-            cost += c2.len();
-            cost += CTX_LEN;
-            // u and v are 32 byte points
-            cost += 2 * 32;
-            // sym_ct is a byte vector which is the encryption
-            // of the platform tag on the message
-            // this grows linearly with respect to the number of moderators
-            // 32 bytes (mac digest) * num_moderators
-            
-            // nonce is 12 bytes
-            cost += 12;
+            let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
+
+
+            let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
+            cost += mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
 
             println!("Generated report for message: {} with cost: {}", message, &cost);
         }

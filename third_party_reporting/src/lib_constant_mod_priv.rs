@@ -332,12 +332,10 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
         let (c1, c2, ad) = Client::send(&clients[i].msg_key, &ms[i], mod_i.try_into().unwrap(), &pki);
         
         if print {
-            // Communication cost
-            let mut cost: usize = 0;
-            // c1 and c2 are vectors of bytes
-            cost += c1.len() + c2.len();
-            // ad is a 32 byte Ristretto Point
-            cost += 32;
+            // Additional Costs
+            // (1) Commitment to the Message
+            // (2) Moderator masked public key (element of G)
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad.compress());
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -378,23 +376,16 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
 
 
         if print {
-            let mut cost: usize = 0;
-            // Sigma is an element of G1Affine
-            cost += G1Affine::uncompressed_size();
+            // Additional Costs
+            // (1) Platform signature (element of G1Affine)
+            // (2) epk (element of G)
+            // (3) c3 (proxy re-encryption el-gamal ct of randomness)
+            let mut cost: usize = mem::size_of_val(&sigma.to_compressed());
 
             let (c3, epk, ctx) = st.clone();
-            let((u, v), sym_ct, nonce) = c3;
-
-            // Ciphertext size = 2 32 byte Ristretto points
-            cost += 2 * 32;
-            // byte vector
-            cost += sym_ct.len();
-            // 12 byte nonce
-            cost += 12;
-
-            // epk is a ristretto point
-            cost += 32;
-            cost += CTX_LEN;
+            
+            cost += mem::size_of_val(&epk.compress());
+            cost += gamal::size_of_el_gamal_ct(c3);
 
             println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx).unwrap(), &cost);
         }
@@ -436,30 +427,26 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
         let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            let mut cost: usize = 0;
-            // u32 mod id
-            cost += mem::size_of::<u32>();
+            // Additional Costs
+            // (1) Moderator id
+            // (2) randomness for commitment
+            // (3) commitment
+            // (4) platform signature (element of G1Affine)
+            // (5) ke_2 (Scalar)
+            // (6) pk_proc (PLatform mod-secret in G2Affine)
+            // (7) c3 (proxy re-encryption of randonness)
+            
+            let mut cost: usize = mem::size_of_val(&ad);
             
             // ReportDoc cost
             let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = report.clone();
-            let ((u, v), sym_ct, nonce) = c3;
             
-            // byte vector
-            cost += c2.len();
-            // 32 byte key k_f
-            cost += 32;
-            // Sigma is an element of G1Affine
-            cost += G1Affine::uncompressed_size();
-            // pk_proc is an element of G2Affine
-            cost += G2Affine::uncompressed_size();
-            // k_r is a 32 byte scalar
-            cost += 32;
-            // El Gamal Ciphertext consists of 2 32 byte Ristretto Points
-            // and a symmetric byte vector
-            // and a 12 byte nonce
-            cost += 2 * 32;
-            cost += sym_ct.len();
-            cost += 12;
+            cost += mem::size_of_val(&k_f);
+            cost += mem::size_of_val(&*c2);
+            cost += mem::size_of_val(&sigma.to_compressed());
+            cost += mem::size_of_val(&k_r);
+            cost += mem::size_of_val(&pk_proc.to_compressed());
+            cost += gamal::size_of_el_gamal_ct(c3);
 
 
             println!("Received message: {} with cost: {}", message, cost);
@@ -478,27 +465,19 @@ pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, ReportDoc
         let report = Client::report_gen(message, rd);
 
         if print {
-            let mut cost: usize = 0;
+            // Additional Costs
+            // (1) randomness for commitment
+            // (2) commitment to message
+            // (3) pairing signature (sigma' element of Gt)
+            // (4) proxy re-encryption of randomness
 
             let (c2, k_f, ctx, sigma_prime, c3_prime) = report.clone();
-
-            // c2 is a byte vector
-            cost += c2.len();
-            // k_f is a 32 byte key
-            cost += 32;
-            // Sigma Prime is an element of Gt
-            let compressed_sigma_prime = sigma_prime.compress().unwrap();
-            cost += mem::size_of_val(&compressed_sigma_prime);
-
+            let mut cost: usize = mem::size_of_val(&k_f);
             
-            let ((u, v), sym_ct, nonce) = c3_prime;
-            // c3_prime is a El Gamal Ciphertext
-            // Has 2 32 byte Ristretto Points
-            // a symmetric byte vector
-            // and a 12 byte nonce
-            cost += 2 * 32;
-            cost += sym_ct.len();
-            cost += 12;
+            cost += mem::size_of_val(&*c2);
+            cost += mem::size_of_val(&sigma_prime.compress());
+            cost += gamal::size_of_el_gamal_ct(c3_prime);
+
 
             println!("Generated report for message: {} with cost: {}", message, &cost);
         }

@@ -7,11 +7,19 @@ use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit},
     Aes256Gcm, Nonce
 };
-
+use std::mem;
 
 type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
 type Point = RistrettoPoint;
+
+
+pub fn size_of_el_gamal_ct(ct: (Ciphertext, Vec<u8>, Nonce<U12>)) -> usize {
+    let ((u, v), sym_ct, nonce) = ct;
+    let mut cost: usize = mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+    
+    cost
+}
 
 // Proxy Re-Encryption El Gamal Scheme
 pub(crate) fn pre_elgamal_enc(pk: &Point, m: &Point) -> Ciphertext {
