@@ -1,12 +1,12 @@
 use criterion::*;
 use third_party_reporting::lib_common::*;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
 use third_party_reporting::lib_mod_priv as mod_priv;
 
-type Point = RistrettoPoint;
+type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 

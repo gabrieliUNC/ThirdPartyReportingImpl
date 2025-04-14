@@ -3,9 +3,9 @@ use rand::distributions::Alphanumeric;
 use rand::distributions::DistString;
 use third_party_reporting::lib_mod_priv as mod_priv;
 use third_party_reporting::lib_common::*;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::CompressedRistretto;
 
-type Point = RistrettoPoint;
+type Point = CompressedRistretto;
 
 pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>) {
     let (c1, c2, ad) = &c1c2ad[0];

@@ -1,19 +1,19 @@
 use criterion::*;
 use third_party_reporting::lib_common::*;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
 use third_party_reporting::lib_constant_mod_priv as constant_mod_priv;
 use blstrs as blstrs;
 
-type Point = RistrettoPoint;
-type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
+type Point = CompressedRistretto;
+type PublicKey = (Point, Point, Scalar, constant_mod_priv::G2Compressed);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
 type State = (Ciphertext, Point, Vec<u8>);
 
-pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(blstrs::G1Affine, State)>) {
+pub fn read(clients: &Vec<constant_mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(constant_mod_priv::G1Compressed, State)>) {
     let (c1, c2, _ad) = &c1c2ad[0];
     let (sigma, st) = &sigma_st[0];
     constant_mod_priv::Client::read(&clients[0].msg_key, pks, &c1, &c2, &sigma, &st);

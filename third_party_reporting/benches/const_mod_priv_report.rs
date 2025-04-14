@@ -1,6 +1,6 @@
 use criterion::*;
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
@@ -8,10 +8,10 @@ use third_party_reporting::lib_constant_mod_priv as constant_mod_priv;
 use third_party_reporting::lib_common::*;
 use blstrs as blstrs;
 
-type Point = RistrettoPoint;
+type Point = CompressedRistretto;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 
-type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::G2Affine, Scalar, Ciphertext);
+type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, constant_mod_priv::G1Compressed, constant_mod_priv::G2Compressed, Scalar, Ciphertext);
 
 pub fn bench_const_mod_priv_report(c: &mut Criterion) {
     // Setup platforms and moderators

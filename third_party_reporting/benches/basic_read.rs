@@ -1,11 +1,11 @@
 use criterion::*;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use aes_gcm::Nonce;
 use generic_array::typenum::U12;
 use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_common::*;
 
-type Point = RistrettoPoint;
+type Point = CompressedRistretto;
 
 pub fn read(clients: &Vec<basic::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, pks: &Vec<Point>, sigma_st: &Vec<(Vec<u8>, (Vec<u8>, u32))>) {
     let (c1, c2, _ad) = &c1c2ad[0];
