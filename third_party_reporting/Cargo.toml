@@ -10,6 +10,7 @@ opt-level = 3
 opt-level = 3
 
 [dependencies]
+serde = "1.0.219"
 aes-gcm = "0.10.3"
 openssl-sys = "0.9"
 openssl = "0.10"
@@ -34,6 +35,7 @@ group = "0.13.0"
 rand_chacha = "0.9.0"
 getrandom = "0.3"
 gnuplot = "0.0.45"
+
 
 [[bench]]
 name = "basic_platform_setup"

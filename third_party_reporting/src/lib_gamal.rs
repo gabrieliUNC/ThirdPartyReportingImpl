@@ -1,6 +1,6 @@
 use rand::rngs::OsRng;
 use sha2::{Sha256, Digest};
-use curve25519_dalek::ristretto::{RistrettoPoint};
+use curve25519_dalek::ristretto::{RistrettoPoint, CompressedRistretto};
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs;
 use aes_gcm::{
@@ -14,9 +14,9 @@ use generic_array::typenum::U12;
 type Point = RistrettoPoint;
 
 
-pub fn size_of_el_gamal_ct(ct: (Ciphertext, Vec<u8>, Nonce<U12>)) -> usize {
+pub fn size_of_el_gamal_ct(ct: ((CompressedRistretto, CompressedRistretto), Vec<u8>, Nonce<U12>)) -> usize {
     let ((u, v), sym_ct, nonce) = ct;
-    let mut cost: usize = mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+    let cost: usize = mem::size_of_val(&u) + mem::size_of_val(&v) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
     
     cost
 }

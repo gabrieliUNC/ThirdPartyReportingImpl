@@ -10,27 +10,37 @@ use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::distributions::DistString;
 use rand::Rng;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::{RistrettoPoint, CompressedRistretto};
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
 
 use blstrs as blstrs;
-use blstrs::G1Affine;
-use blstrs::G2Affine;
-use blstrs::Gt;
-use group::Curve;
+use blst::*;
+use blstrs::{G1Affine, G2Affine, Gt};
+use blstrs::Compress;
+use group::{Curve, GroupEncoding};
 use group::prime::PrimeCurveAffine;
 use ff::Field;
+use serde::ser::Serialize;
 
 
-type PublicKey = (Point, Point, Scalar, blstrs::G2Affine);
-type Point = RistrettoPoint;
+type Point = CompressedRistretto;
+type PublicKey = (Point, Point, Scalar, G2Compressed);
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
 type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
-type ReportDoc = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::G1Affine, blstrs::G2Affine, Scalar, Ciphertext);
+type ReportDoc = (Vec<u8>, [u8; 32], Vec<u8>, G1Compressed, G2Compressed, Scalar, Ciphertext);
 type State = (Ciphertext, Point, Vec<u8>);
+
+#[derive(Clone)]
+pub struct G1Compressed {
+    point: [u8; 48]
+}
+#[derive(Clone)]
+pub struct G2Compressed {
+    point: [u8; 96]
+}
 
 
 // Moderator Properties
@@ -41,7 +51,7 @@ pub struct Moderator {
     pub pk_enc_2: Point, // Moderator public key 2
     pub k1_2: Scalar, // Moderator re-encryption key
     pub k: blstrs::Scalar, // Moderator group scalar secret key
-    pub pk_proc: blstrs::G2Affine // Moderator group 2 public key
+    pub pk_proc: G2Compressed // Moderator group 2 public key
 }
 
 // Moderator Implementation 
@@ -56,12 +66,14 @@ impl Moderator {
         let sk = blstrs::Scalar::random(rng);
 
         // k_reg^k
-        let pk = (pk_reg * sk).to_affine();
+        let pk: G2Compressed = G2Compressed {
+            point: (pk_reg * sk).to_compressed()
+        };
         Moderator {
             sk_p: mac_keygen(),
             sk_enc: keys2.0,
-            pk_enc_1: keys.1,
-            pk_enc_2: keys2.1,
+            pk_enc_1: keys.1.compress(),
+            pk_enc_2: keys2.1.compress(),
             k1_2: keys2.0 * keys.0.invert(), // sk2 / sk1
             k: sk,
             pk_proc: pk
@@ -71,8 +83,9 @@ impl Moderator {
     pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, _sk_p: &[u8; 32], _moderator_id: usize, message: &str, report: &Report) -> String {
         let (c2, r, ctx, sigma_prime, c3_prime) = report;
         let (el_gamal_ct, r_ct, nonce) = c3_prime;
+        let (u, v) = el_gamal_ct;
 
-        let r_prime = gamal::pre_dec(sk_enc, &(*el_gamal_ct, r_ct.to_vec()), nonce);
+        let r_prime = gamal::pre_dec(sk_enc, &((u.decompress().unwrap(), v.decompress().unwrap()), r_ct.to_vec()), nonce);
         let r_prime = blstrs::Scalar::from_bytes_le(&r_prime.try_into().unwrap()).unwrap();
 
         // Compute H(c2, ctx)
@@ -99,7 +112,7 @@ impl Moderator {
 // Platform Properties
 pub struct Platform {
     pub k_p: blstrs::Scalar, // Platform key
-    pub k_reg: blstrs::G2Affine, // Registration key
+    pub k_reg: G2Compressed, // Registration key
     pub sk_p: Vec<([u8; 32], PublicKey)> // Vector of Moderator keys accessible to the Platform
 }
 
@@ -120,7 +133,9 @@ impl Platform {
 
         Platform {
             k_p: sk,
-            k_reg: pk,
+            k_reg: G2Compressed {
+                point: pk.to_compressed()
+            },
             sk_p: Vec::<([u8; 32], PublicKey)>::new()
         }
     }
@@ -128,7 +143,7 @@ impl Platform {
 
 
 
-    pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (blstrs::G1Affine, State) {
+    pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (G1Compressed, State) {
         let pk_a = ad;
         
         let rng = thread_rng();
@@ -142,10 +157,11 @@ impl Platform {
         let sigma = hashed_g1 * (k_p * r_prime);
 
         // PRE Scheme
-        let c3 = gamal::pre_enc(pk_a, &r_prime.to_bytes_le().to_vec());
+        let c3 = gamal::pre_enc(&pk_a.decompress().unwrap(), &r_prime.to_bytes_le().to_vec());
+        let ((u, v), sym_ct, nonce) = c3;
 
 
-        (sigma.to_affine(), (c3, *pk_a, ctx.clone()))
+        (G1Compressed { point : sigma.to_compressed() }, (((u.compress(), v.compress()), sym_ct, nonce), *pk_a, ctx.clone()))
     }
 
 }
@@ -203,7 +219,7 @@ impl Client {
 
         // El gamal proxy re-encryption
         let x = Scalar::random(&mut OsRng);
-        let pk_a: Point = &x * pk1;
+        let pk_a: Point = (&x * pk1.decompress().unwrap()).compress();
         let k_r: Scalar = k1_2 * x.invert();
 
 
@@ -214,18 +230,19 @@ impl Client {
   
 
 
-    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &blstrs::G1Affine, st: &(Ciphertext, Point, Vec<u8>)) -> (String, u32, ReportDoc) {
+    pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &G1Compressed, st: &(Ciphertext, Point, Vec<u8>)) -> (String, u32, ReportDoc) {
         let (c3, pk_a, ctx) = st;
         let (message, moderator_id, k_r, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
-        let (_pk1, pk2, _k1_2, pk_proc) = pks[usize::try_from(moderator_id).unwrap()];
+        let (_pk1, pk2, _k1_2, pk_proc) = &pks[usize::try_from(moderator_id).unwrap()];
 
 
         // Ensure this message is reportable
-        assert!((&k_r * pk_a) == pk2);
+        assert!((&k_r * pk_a.decompress().unwrap()) == pk2.decompress().unwrap());
 
         // Generate report documentation
-        let rd: ReportDoc = (c2.clone(), k_f.clone(), ctx.clone(), *sigma, pk_proc, k_r, c3.clone());
+        let rd: ReportDoc = (c2.clone(), k_f.clone(), ctx.clone(), sigma.clone(), 
+            pk_proc.clone(), k_r, c3.clone());
 
 
         (message, moderator_id, rd)
@@ -235,13 +252,16 @@ impl Client {
     // type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
     pub fn report_gen(msg: &String, rd: &ReportDoc) -> Report {
         let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = rd;
-        let sigma_prime: blstrs::Gt = blstrs::pairing(&sigma, &pk_proc);
+        let sigma_prime: blstrs::Gt = blstrs::pairing(&blstrs::G1Affine::from_compressed(&sigma.point).unwrap(), &blstrs::G2Affine::from_compressed(&pk_proc.point).unwrap());
 
         // PRE Re-Encryption
         let (ct, sym_ct, nonce) = c3;
-        let c3_prime = gamal::pre_re_enc(&ct, &k_r);
+        let (u, v) = ct;
+        let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
+        let (u, v) = c3_prime;
 
-        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, (c3_prime, sym_ct.to_vec(), *nonce));
+
+        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, ((u.compress(), v.compress()), sym_ct.to_vec(), *nonce));
 
 
         report
@@ -263,7 +283,7 @@ pub fn test_setup_mod(platform: &mut Platform, num_moderators: usize) -> (Vec<Mo
     let mut pks: Vec<PublicKey> = Vec::with_capacity(num_moderators);
 
     for _i in 0..num_moderators {
-        let moderator = Moderator::new(&platform.k_reg);
+        let moderator = Moderator::new(&blstrs::G2Affine::from_compressed(&platform.k_reg.point).unwrap());
         platform.sk_p.push((moderator.sk_p.clone(), (moderator.pk_enc_1.clone(), moderator.pk_enc_2.clone(), moderator.k1_2.clone(), moderator.pk_proc.clone())));
         pks.push((moderator.pk_enc_1.clone(), moderator.pk_enc_2.clone(), moderator.k1_2.clone(), moderator.pk_proc.clone()));
         moderators.push(moderator);
@@ -335,7 +355,7 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             // Additional Costs
             // (1) Commitment to the Message
             // (2) Moderator masked public key (element of G)
-            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad.compress());
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad);
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -366,8 +386,8 @@ Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>> {
 
 
 // process(k_p, ks, c1, c2, ad, ctx) -> (G1, State)
-pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, platform: &Platform, print: bool) -> Vec<(blstrs::G1Affine, State)> {
-    let mut sigma_st: Vec<(blstrs::G1Affine, State)> = Vec::with_capacity(num_clients);
+pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, platform: &Platform, print: bool) -> Vec<(G1Compressed, State)> {
+    let mut sigma_st: Vec<(G1Compressed, State)> = Vec::with_capacity(num_clients);
     // Platform processes message
     for i in 0..num_clients {
         let (c1, c2, ad) = &c1c2ad[i];
@@ -380,11 +400,11 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
             // (1) Platform signature (element of G1Affine)
             // (2) epk (element of G)
             // (3) c3 (proxy re-encryption el-gamal ct of randomness)
-            let mut cost: usize = mem::size_of_val(&sigma.to_compressed());
+            let mut cost: usize = mem::size_of_val(&sigma);
 
             let (c3, epk, ctx) = st.clone();
             
-            cost += mem::size_of_val(&epk.compress());
+            cost += mem::size_of_val(&epk);
             cost += gamal::size_of_el_gamal_ct(c3);
 
             println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx).unwrap(), &cost);
@@ -399,12 +419,12 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
 
 // Process messages of sizes in MSG_SIZE_SCALE
 // and encrypt them to moderators in MOD_SCALE
-pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(blstrs::G1Affine, State)>>> {
+pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<Vec<(Vec<u8>, Vec<u8>, Point)>>>, platforms: &Vec<Platform>) -> Vec<Vec<Vec<(G1Compressed, State)>>> {
     // Process messages
-    let mut sigma_st: Vec<Vec<Vec<(blstrs::G1Affine, State)>>> = Vec::new();
+    let mut sigma_st: Vec<Vec<Vec<(G1Compressed, State)>>> = Vec::new();
     // sigma_st[i][j] = encrypted signature on message commitmment j to moderator i
     for i in 0..moderators.len() {
-        let mut tmp: Vec<Vec<(blstrs::G1Affine, State)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        let mut tmp: Vec<Vec<(G1Compressed, State)>> = Vec::with_capacity(MSG_SIZE_SCALE.len());
         for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             tmp.push(test_process(1, *msg_size, &c1c2ad[i][j], &platforms[i], false));
         }
@@ -417,7 +437,7 @@ pub fn test_process_variable(moderators: &Vec<Vec<Moderator>>, c1c2ad: &Vec<Vec<
 
 
 // read(k, pks, c1, c2, sigma, st)
-pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(blstrs::G1Affine, State)>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, ReportDoc)> {
+pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, sigma_st: &Vec<(G1Compressed, State)>, clients: &Vec<Client>, pks: &Vec<PublicKey>, print: bool) -> Vec<(String, u32, ReportDoc)> {
     // Receive messages
     let mut reports: Vec<(String, u32, ReportDoc)> = Vec::with_capacity(num_clients);
     // Receive message i from client i to be moderated by randomly selected moderator mod_i
@@ -443,9 +463,9 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             
             cost += mem::size_of_val(&k_f);
             cost += mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&sigma.to_compressed());
+            cost += mem::size_of_val(&sigma);
             cost += mem::size_of_val(&k_r);
-            cost += mem::size_of_val(&pk_proc.to_compressed());
+            cost += mem::size_of_val(&pk_proc.point);
             cost += gamal::size_of_el_gamal_ct(c3);
 
 

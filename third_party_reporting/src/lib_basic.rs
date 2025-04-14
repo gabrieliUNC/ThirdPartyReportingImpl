@@ -10,10 +10,12 @@ use rand::thread_rng;
 use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use std::mem;
 
-type Point = RistrettoPoint;
+//type Point = RistrettoPoint;
+type Point = CompressedRistretto;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
 use generic_array::typenum::U12;
 
@@ -34,15 +36,16 @@ impl Moderator {
         Moderator {
             sk_p: mac_keygen(),
             sk_enc: keys.0,
-            pk_enc: keys.1
+            pk_enc: keys.1.compress()
         }
     }
 
     pub fn moderate(sk_enc: &Scalar, sk_p: &[u8; 32], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) -> String {
         let (k_f, c2, ctx, ct) = report;
         let (el_gamal_ct, sigma, nonce) = ct;
+        let (u, v) = *el_gamal_ct;
 
-        let sigma_pt = gamal::decrypt(sk_enc, &(*el_gamal_ct, sigma.to_vec()), nonce);
+        let sigma_pt = gamal::decrypt(sk_enc, &((u.decompress().unwrap(), v.decompress().unwrap()), sigma.to_vec()), nonce);
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
@@ -150,9 +153,10 @@ impl Client {
         let (message, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
         let mod_pk_i = pks[*ad as usize];
-        let ct = gamal::encrypt(&mod_pk_i, &sigma);
+        let ct = gamal::encrypt(&mod_pk_i.decompress().unwrap(), &sigma);
 
-        let rd: Report = (k_f, c2.clone(), ctx.clone(), ct);
+        let ((u, v), sym_ct, nonce) = ct;
+        let rd: Report = (k_f, c2.clone(), ctx.clone(), ((u.compress(), v.compress()), sym_ct, nonce));
 
 
         (message, *ad, rd)
@@ -340,11 +344,9 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
 
 
             let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
-
 
             let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+            cost += gamal::size_of_el_gamal_ct(ct);
 
             println!("Received message: {} with cost: {}", message, &cost);
         }
@@ -369,11 +371,9 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: 
 
 
             let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-            let ((u, v), sym_ct, nonce): ((Point, Point), Vec<u8>, Nonce<U12>) = ct.clone();
-
 
             let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&u.compress()) + mem::size_of_val(&v.compress()) + mem::size_of_val(&*sym_ct) + mem::size_of_val(&*nonce);
+            cost += gamal::size_of_el_gamal_ct(ct);
 
 
             println!("Generated report for message: {} with cost: {}", msg, &cost);
