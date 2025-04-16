@@ -129,3 +129,19 @@ harness = false
 [[bench]]
 name = "hmac_bench"
 harness = false
+
+[[bench]]
+name = "plain_send"
+harness = false
+
+[[bench]]
+name = "plain_process"
+harness = false
+
+[[bench]]
+name = "plain_read"
+harness = false
+
+[[bench]]
+name = "plain_moderate"
+harness = false

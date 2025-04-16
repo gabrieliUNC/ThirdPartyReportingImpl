@@ -6,6 +6,7 @@ type HmacSha256 = Hmac<Sha256>;
 
 
 pub const CTX_LEN: usize = 100;
+pub const CTX_STR: &str = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean m";
 pub const CTX: [u8; CTX_LEN] = *b"Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean m";
 pub const MOD_SCALE: [usize; 1] = [64];
 //[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];

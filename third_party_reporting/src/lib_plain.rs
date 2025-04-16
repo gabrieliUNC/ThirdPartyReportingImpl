@@ -3,6 +3,8 @@ use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit},
     Aes256Gcm, Nonce, Key
 };
+use rand::distributions::Alphanumeric; 
+use rand::distributions::DistString;
 use bincode;
 
 use crate::lib_common::*;
@@ -90,3 +92,68 @@ impl Moderator {
     }
 }
 
+
+
+// Setup Messages
+pub fn test_init_messages(num_clients: usize, msg_size: usize) -> Vec<String> {
+    // Prepare messages
+    let mut ms: Vec<String> = Vec::with_capacity(num_clients);
+    for _i in 0..num_clients {
+        let m = Alphanumeric.sample_string(&mut rand::thread_rng(), msg_size);
+        ms.push(m);
+    }
+    ms
+}
+
+// Clients
+pub fn test_init_clients(num_clients: usize) -> Vec<Client> {
+    let mut clients: Vec<Client> = Vec::with_capacity(num_clients);
+    for _i in 0..num_clients {
+        let k_r = Aes256Gcm::generate_key(aes_gcm::aead::OsRng);
+        let client = Client::new(k_r);
+        clients.push(client);
+    }
+
+    clients
+}
+
+// send()
+pub fn test_send(senders: &Vec<Client>, ms: &Vec<Vec<String>>) -> Vec<(Vec<u8>, Vec<u8>)> {
+    let n: usize = senders.len();
+    let mut c1c2s: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(n);
+    for i in 0..n {
+        let (c1, c2) = Client::send(&ms[i][0], senders[i].k_r);
+
+        // let (c1, c2, c3) = p::Client::send(&ms[i], senders[i].k_r, &pks, n);
+        c1c2s.push((c1, c2));
+    }
+
+    c1c2s
+}
+
+// mod_process
+pub fn test_process(moderator: &Moderator, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>) -> Vec<Vec<u8>> {
+    let n: usize = c1c2s.len();
+    let mut sigmas: Vec<Vec<u8>> = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let (_, c2) = &c1c2s[i];
+        sigmas.push(Moderator::mod_process(&moderator.k_m, &c2, CTX_STR));
+    }
+
+    sigmas
+}
+
+// receive messages
+pub fn test_read(clients: &Vec<Client>, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>, sigmas: &Vec<Vec<u8>>) -> Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)> {
+    let n: usize = c1c2s.len();
+    let mut reports: Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)> = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let (c1, c2) = c1c2s[i].clone();
+        let st = (c2, CTX_STR.to_string(), sigmas[i].clone());
+        reports.push(Client::read(clients[0].k_r, c1.clone(), st.clone()));
+    }
+
+    reports
+}
