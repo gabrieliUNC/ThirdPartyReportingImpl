@@ -9,6 +9,7 @@ dirs = os.listdir(path)
 data = {}
 schemes = ['basic', 'mod-priv', 'const-mod-priv']
 benches = ['send', 'process', 'read', 'report', 'moderate']
+NUM_MODS = '64'
 
 for dir in dirs:
     scheme = dir[:dir.find('.')]
@@ -17,6 +18,8 @@ for dir in dirs:
     if scheme in schemes:
         sub_dirs = os.listdir(path + '/' + dir)
         for sub_dir in sub_dirs:
+            if sub_dir == 'report' or NUM_MODS not in sub_dir:
+                continue
             fname = path + '/' + dir + '/' + sub_dir + '/base/estimates.json'
             f = open(fname, 'r')
             cur = json.loads(f.read())
@@ -38,5 +41,5 @@ print(df)
 print()
 
 
-#print('CSV output')
-#print(df.to_csv())
+print('CSV output')
+print(df.to_csv())

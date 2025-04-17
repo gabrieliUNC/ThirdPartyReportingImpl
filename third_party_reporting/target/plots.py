@@ -79,12 +79,13 @@ for dir in dirs:
     
 
 
-'''
 print('Mod-Priv-1 Scaling DataFrame output')
 print()
 df = pd.DataFrame(mod_priv)
 df = df[benches]
 df = df.sort_index()
+df.index.name = 'x'
+df.to_csv('mod-priv.csv')
 print(df)
 print()
 
@@ -94,7 +95,6 @@ print()
 df.plot(title='Mod-Priv-1 Scaling PyPlot')
 plt.show()
 print()
-'''
 
 
 print('Mod-Priv-2 Scaling DataFrame output')
@@ -102,6 +102,8 @@ print()
 df = pd.DataFrame(const_mod_priv)
 df = df[benches]
 df = df.sort_index()
+df.index.name = 'x'
+df.to_csv('const-priv.csv')
 print(df)
 print()
 
@@ -118,6 +120,8 @@ print('Process Scaling DataFrame output')
 print()
 df = pd.DataFrame(process)
 df = df.sort_index()
+df.index.name = 'x'
+df.to_csv('process.csv')
 print(df)
 print()
 

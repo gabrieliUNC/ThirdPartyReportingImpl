@@ -260,6 +260,9 @@ impl Client {
         let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
         let (u, v) = c3_prime;
 
+        // compress sigma_prime
+        sigma_prime.compress().unwrap();
+
 
         let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, ((u.compress(), v.compress()), sym_ct.to_vec(), *nonce));
 
