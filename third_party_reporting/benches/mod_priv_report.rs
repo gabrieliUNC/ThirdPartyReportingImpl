@@ -9,7 +9,9 @@ use curve25519_dalek::scalar::Scalar;
 
 type Point = CompressedRistretto;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
-type Report_Doc = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext, Scalar);
+
+
+type ReportDoc = ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>, Scalar, Ciphertext);
 
 pub fn bench_mod_priv_report(c: &mut Criterion) {
     // Setup platforms and moderators
@@ -32,10 +34,10 @@ pub fn bench_mod_priv_report(c: &mut Criterion) {
     let sigma_st = mod_priv::test_process_variable(&moderators, &c1c2ad, &platforms);
 
     // Read messages
-    let mut rds: Vec<Vec<(String, u32, Report_Doc)>> = Vec::new();
+    let mut rds: Vec<Vec<(String, u32, ReportDoc)>> = Vec::new();
     // rds[i][j] = report on message j to moderator for platform i
     for i in 0..moderators.len() {
-        let mut tmp: Vec<(String, u32, Report_Doc)> = Vec::with_capacity(MSG_SIZE_SCALE.len());
+        let mut tmp: Vec<(String, u32, ReportDoc)> = Vec::with_capacity(MSG_SIZE_SCALE.len());
         for (j, _msg_size) in MSG_SIZE_SCALE.iter().enumerate() {
             let rd = mod_priv::test_read(1, &c1c2ad[i][j], &sigma_st[i][j], &clients, &pks[i], false);
 

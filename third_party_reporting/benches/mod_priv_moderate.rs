@@ -8,7 +8,7 @@ use third_party_reporting::lib_common::*;
 
 type Point = CompressedRistretto;
 type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
-type Report = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext);
+type Report = ([u8; 32], Vec<u8>, Ciphertext, Vec<u8>, Vec<u8>);
 
 pub fn bench_mod_priv_moderate(c: &mut Criterion) {
     // Setup platforms and moderators
