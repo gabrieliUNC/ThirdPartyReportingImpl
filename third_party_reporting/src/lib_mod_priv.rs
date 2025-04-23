@@ -334,18 +334,17 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
 
         if print {
             // Additional Cost
-            // (1) Encrypted Platform signature
-            // which is a variable length 2d vector of size as follows:
-            // -- 24 bytes general layout (8 bytes for pointer, 8 bytes for len, 8 bytes for
-            // capacity)
-            // -- (32 bytes for hash digest + 8 bytes for pointer = 40 bytes) * (# moderators)
-            // + 2 Ristretto Points + 1 nonce
-            // (2) Moderator id
+            // (1) Encrypted randomness (124 bytes)
+            // 32 byte symmetric ct + 16 byte 
+            // + 2 Ristretto Points + 1 nonce + 12
+            // (2) Moderator pk (32 bytes)
+            // (3) Sigma which is a vector of mac tags (32 bytes each)
             let (c3, ad, ctx) = st.clone();
 
 
             let mut cost: usize = mem::size_of_val(&ad);
             cost += gamal::size_of_el_gamal_ct(c3.clone());
+            cost += mem::size_of_val(&*sigma);
 
 
             println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx), &cost);
@@ -401,6 +400,7 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
             cost += gamal::size_of_el_gamal_ct(c3.clone());
             cost += mem::size_of_val(&k_r);
+            cost += mem::size_of_val(&sigma);
 
             println!("Received message: {} with cost: {}", message, &cost);
         }
@@ -435,6 +435,7 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, ReportDoc)>, prin
 
             let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
             cost += gamal::size_of_el_gamal_ct(c3_prime.clone());
+            cost += mem::size_of_val(&*sigma);
 
             println!("Generated report for message: {} with cost: {}", message, &cost);
         }
