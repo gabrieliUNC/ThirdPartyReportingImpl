@@ -6,7 +6,7 @@ use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_common::*;
 
 type Point = CompressedRistretto;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 
 pub fn read(clients: &Vec<basic::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>, pks: &Vec<Point>, sigma_st: &Vec<(Ciphertext, (Vec<u8>, u32))>) {

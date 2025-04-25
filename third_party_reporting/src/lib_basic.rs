@@ -13,17 +13,19 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use std::mem;
+use group::*;
+use sha2::{Sha512, Digest};
 
 //type Point = RistrettoPoint;
 type Point = CompressedRistretto;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
 
 type Report = ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext);
 
 // Moderator Properties
 pub struct Moderator {
-    pub sk_p: [u8; 32], // Mac Key shared with the Platform
+    pub sk_p: [u8; 64], // Mac Key shared with the Platform
     pub sk_enc: Scalar, // Moderator private key
     pub pk_enc: Point // Moderator public key
 }
@@ -34,24 +36,28 @@ impl Moderator {
     pub fn new(_pk_reg: &Option<Vec<u8>>) -> Moderator {
         let keys = gamal::elgamal_keygen();
         Moderator {
-            sk_p: mac_keygen(),
+            sk_p: mac_64_keygen(),
             sk_enc: keys.0,
             pk_enc: keys.1.compress()
         }
     }
 
-    pub fn moderate(sk_enc: &Scalar, sk_p: &[u8; 32], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) -> String {
+    pub fn moderate(sk_enc: &Scalar, sk_p: &[u8; 64], message: &str, report: &([u8; 32], Vec<u8>, Vec<u8>, Ciphertext)) -> String {
         let (k_f, c2, ctx, ct) = report;
-        let (el_gamal_ct, sigma, nonce) = ct;
-        let (u, v) = *el_gamal_ct;
 
-        let sigma_pt = gamal::decrypt(sk_enc, &((u.decompress().unwrap(), v.decompress().unwrap()), sigma.to_vec()), nonce);
+        let (u, v) = ct;
+        let sigma_pt = gamal::elgamal_dec(sk_enc, &(u.decompress().unwrap(), v.decompress().unwrap())).to_bytes();
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
 
-        // Verify signature
-        assert!(mac_verify(&sk_p, &[&c2[..], &ctx[..]].concat(), &sigma_pt));
+        // Verify Point
+        let mut maybe_sigma = mac_64_sign(&sk_p, &[&c2[..], &ctx[..]].concat());
+        // Point encrypt
+        let maybe_sigma = RistrettoPoint::hash_from_bytes::<Sha512>(&maybe_sigma).to_bytes();
+
+        // Verify Signature
+        assert!(maybe_sigma == sigma_pt);
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -64,7 +70,7 @@ impl Moderator {
 pub struct Platform {
     pub k_p: Option<Vec<u8>>, // Platform key
     pub k_reg: Option<Vec<u8>>, // Registration key
-    pub sk_p: Vec<([u8; 32], Point)> // Vector of Moderator keys accessible to the Platform
+    pub sk_p: Vec<([u8; 64], Point)> // Vector of Moderator keys accessible to the Platform
 }
 
 // Platform Implementation
@@ -73,7 +79,7 @@ impl Platform {
         Platform {
             k_p: None,
             k_reg: None,
-            sk_p: Vec::<([u8; 32], Point)>::new()
+            sk_p: Vec::<([u8; 64], Point)>::new()
         }
     }
 
@@ -84,17 +90,18 @@ impl Platform {
         (self.k_p.clone(), self.k_reg.clone())
     }
 
-    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Ciphertext, (Vec<u8>, u32)) {
+    pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 64], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: u32, ctx: &Vec<u8>) -> (Ciphertext, (Vec<u8>, u32)) {
         let moderator_id: usize = ad.try_into().unwrap();
         let (mac_key_i, mod_pk_i) = &ks[moderator_id];
-        let sigma_pt = mac_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
-        let sigma = gamal::encrypt(&mod_pk_i.decompress().unwrap(), &sigma_pt);
+        let mut sigma_pt = mac_64_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
-        let ((u, v), sym_ct, nonce) = sigma;
+        // Point encrypt
+        let sigma_point = RistrettoPoint::hash_from_bytes::<Sha512>(&sigma_pt);
+        let (u, v) = gamal::elgamal_enc(&mod_pk_i.decompress().unwrap(), &sigma_point);
 
 
-        (((u.compress(), v.compress()), sym_ct, nonce), (ctx.to_vec(), ad))
+        ((u.compress(), v.compress()), (ctx.to_vec(), ad))
     }
 
 }
@@ -250,9 +257,10 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
 
         if print {
             // Additional Costs
-            // (1) Commitment to the Message
-            // (2) Moderator id
-            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad);
+            // (1) Commitment randomness
+            // (2) Commitment to the Message
+            // (3) Moderator id
+            let mut cost: usize = 32 + mem::size_of_val(&*c2) + mem::size_of_val(&ad);
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -297,7 +305,8 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
             // (1) Platform signature
             // (2) Moderator id
             let (ctx, ad) = st.clone();
-            let mut cost: usize = gamal::size_of_el_gamal_ct(sigma.clone()) + mem::size_of_val(&ad);
+            let (u, v) = sigma.clone();
+            let mut cost = mem::size_of_val(&u) + mem::size_of_val(&v) + mem::size_of_val(&ad);
 
             println!("Adding context: {:?} with communication cost: {}", String::from_utf8(ctx).unwrap(), &cost);
         }
@@ -348,7 +357,8 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
             let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
 
             let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += gamal::size_of_el_gamal_ct(ct);
+            let (u, v) = ct.clone();
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
 
             println!("Received message: {} with cost: {}", message, &cost);
         }
@@ -375,7 +385,8 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: 
             let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
 
             let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += gamal::size_of_el_gamal_ct(ct);
+            let (u, v) = ct.clone();
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
 
 
             println!("Generated report for message: {} with cost: {}", msg, &cost);

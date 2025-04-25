@@ -7,7 +7,7 @@ use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_common::*;
 
 type Point = CompressedRistretto;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 
 pub fn bench_basic_moderate(c: &mut Criterion) {
