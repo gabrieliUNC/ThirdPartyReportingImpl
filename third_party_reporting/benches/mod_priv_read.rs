@@ -10,7 +10,7 @@ use third_party_reporting::lib_mod_priv as mod_priv;
 type ProcessState = (Ciphertext, Point, Vec<u8>);
 type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar);
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 pub fn read(clients: &Vec<mod_priv::Client>, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, pks: &Vec<PublicKey>, sigma_st: &Vec<(Vec<u8>, ProcessState)>) {
     let (c1, c2, _ad) = &c1c2ad[0];

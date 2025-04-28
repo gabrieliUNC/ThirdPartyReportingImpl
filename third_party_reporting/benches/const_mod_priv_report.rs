@@ -9,7 +9,7 @@ use third_party_reporting::lib_common::*;
 use blstrs as blstrs;
 
 type Point = CompressedRistretto;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 type Report_Doc = (Vec<u8>, [u8; 32], Vec<u8>, constant_mod_priv::G1Compressed, constant_mod_priv::G2Compressed, Scalar, Ciphertext);
 

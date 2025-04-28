@@ -12,12 +12,13 @@ use rand::distributions::DistString;
 use rand::Rng;
 use curve25519_dalek::ristretto::{RistrettoPoint, CompressedRistretto};
 use curve25519_dalek::scalar::Scalar;
+use group::GroupEncoding;
 use rand::rngs::OsRng;
 
 
 type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar);
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 type ProcessState = (Ciphertext, Point, Vec<u8>);
 use generic_array::typenum::U12;
 
@@ -51,16 +52,17 @@ impl Moderator {
     pub fn moderate(sk_enc: &Scalar, sk_p: &[u8; 32], moderator_id: usize, message: &str, report: &Report) -> String {
         let (k_f, c2, c3_prime, ctx, sigma) = report;
 
-        let (ct, sym_ct, nonce) = c3_prime;
-        let (u, v) = ct;
+        let (u, v) = c3_prime;
 
-        let r_prime = gamal::pre_dec(&sk_enc, &((u.decompress().unwrap(), v.decompress().unwrap()), sym_ct.to_vec()), nonce);
+        let r_prime = gamal::pre_elgamal_dec(&sk_enc, &(u.decompress().unwrap(), v.decompress().unwrap()));
+        // Get hashed bytes
+        let r_prime_bytes = hash(&r_prime.to_bytes().to_vec());
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
 
         // Verify signature
-        assert!(mac_verify(&sk_p, &[&c2[..], &r_prime[..], &ctx[..]].concat(), &sigma));
+        assert!(mac_verify(&sk_p, &[&c2[..], &r_prime_bytes[..], &ctx[..]].concat(), &sigma));
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -94,18 +96,22 @@ impl Platform {
     }
 
     pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (Vec<u8>, ProcessState) {
-        let mut r_prime: [u8; 32] = mac_keygen();
+        // Get random group element of ristretto group
+        let mut r_prime = RistrettoPoint::random(&mut OsRng);
+
+        // Hash to random looking bytes
+        let r_prime_bytes = hash(&r_prime.to_bytes().to_vec());
+
         let mut sigma_pt: Vec<u8> = Vec::<u8>::new();
         for i in 0..ks.len() {
-            sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &r_prime[..], &ctx[..]].concat()));
+            sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &r_prime_bytes[..], &ctx[..]].concat()));
         }
 
         let pk = ad.decompress().unwrap();
-        let c3 = gamal::pre_enc(&pk, &r_prime.to_vec());
+        let c3 = gamal::pre_elgamal_enc(&pk, &r_prime);
+        let (u, v) = c3;
 
-        let((u, v), sym_ct, nonce) = c3;
-
-        let st: ProcessState = (((u.compress(), v.compress()), sym_ct, nonce), *ad, ctx.clone());
+        let st: ProcessState = ((u.compress(), v.compress()), *ad, ctx.clone());
 
 
         (sigma_pt, st)
@@ -193,13 +199,13 @@ impl Client {
     pub fn report_gen(_msg: &String, rd: &ReportDoc) -> Report {
         let (k_f, c2, ctx, sigma, k_r, c3) = rd;
 
-        let((u, v), sym_ct, nonce) = c3;
+        let(u, v) = c3;
 
         let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
 
         let (u_prime, v_prime) = c3_prime;
 
-        let report: Report = (*k_f, c2.clone(), ((u_prime.compress(), v_prime.compress()), sym_ct.to_vec(), *nonce), ctx.clone(), sigma.clone());
+        let report: Report = (*k_f, c2.clone(), (u_prime.compress(), v_prime.compress()), ctx.clone(), sigma.clone());
 
         report
     }
@@ -294,7 +300,8 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             // Additional Costs
             // (1) Commitment to the Message
             // (2) Moderator masked public key (element of G)
-            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad);
+            // (3) commitment randomness (32 bytes)
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad) + 32;
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -340,10 +347,11 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
             // (2) Moderator pk (32 bytes)
             // (3) Sigma which is a vector of mac tags (32 bytes each)
             let (c3, ad, ctx) = st.clone();
+            let (u, v) = c3;
 
 
             let mut cost: usize = mem::size_of_val(&ad);
-            cost += gamal::size_of_el_gamal_ct(c3.clone());
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
             cost += mem::size_of_val(&*sigma);
 
 
@@ -396,9 +404,10 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             // (5) ke_2 (proxy re-encryption Scalar)
 
             let (k_f, c2, _ctx, sigma, k_r, c3): ReportDoc = rd.clone();
+            let (u, v) = c3;
 
             let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += gamal::size_of_el_gamal_ct(c3.clone());
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
             cost += mem::size_of_val(&k_r);
             cost += mem::size_of_val(&sigma);
 
@@ -431,10 +440,11 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, ReportDoc)>, prin
             // (5) ke_2 (proxy re-encryption Scalar)
 
             let (k_f, c2, c3_prime, _ctx, sigma): Report = report.clone();
+            let (u, v) = c3_prime;
 
 
             let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            cost += gamal::size_of_el_gamal_ct(c3_prime.clone());
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
             cost += mem::size_of_val(&*sigma);
 
             println!("Generated report for message: {} with cost: {}", message, &cost);

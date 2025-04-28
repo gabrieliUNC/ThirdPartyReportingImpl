@@ -1273,6 +1273,7 @@ dependencies = [
  "serde",
  "sha2",
  "sha3",
+ "subtle",
  "typenum",
 ]
 

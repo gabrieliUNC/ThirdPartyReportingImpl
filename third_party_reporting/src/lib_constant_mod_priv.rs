@@ -26,7 +26,7 @@ use serde::ser::Serialize;
 
 type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar, G2Compressed);
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
 
 type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
@@ -82,16 +82,18 @@ impl Moderator {
 
     pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, _sk_p: &[u8; 32], _moderator_id: usize, message: &str, report: &Report) -> String {
         let (c2, r, ctx, sigma_prime, c3_prime) = report;
-        let (el_gamal_ct, r_ct, nonce) = c3_prime;
-        let (u, v) = el_gamal_ct;
+        let (u, v) = c3_prime;
 
-        let r_prime = gamal::pre_dec(sk_enc, &((u.decompress().unwrap(), v.decompress().unwrap()), r_ct.to_vec()), nonce);
-        let r_prime = blstrs::Scalar::from_bytes_le(&r_prime.try_into().unwrap()).unwrap();
+        let r_prime = gamal::pre_elgamal_dec(sk_enc, &(u.decompress().unwrap(), v.decompress().unwrap()));
+
+        let mut r_prime_bytes: [u8; 32] = [0u8; 32];
+        r_prime_bytes.copy_from_slice(&hash(&r_prime.to_bytes().to_vec()));
+        let r_prime_bls_scalar = new_blstrs_scalar(r_prime_bytes);
 
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
         // H(c2, ctx)^(k*r')
-        let hashed_g1 = hashed_g1 * (*k * r_prime);
+        let hashed_g1 = hashed_g1 * (*k * r_prime_bls_scalar);
 
         let maybe_sigma = blstrs::pairing(&hashed_g1.to_affine(), &blstrs::G2Affine::generator());
 
@@ -146,22 +148,25 @@ impl Platform {
     pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (G1Compressed, State) {
         let pk_a = ad;
         
-        let rng = thread_rng();
-        let r_prime = blstrs::Scalar::random(rng);
-
+        // Make RistrettoPoint to encrypt with elgamal
+        let r_prime = RistrettoPoint::random(&mut OsRng);
+        
+        // Make random bytes for bls Scalar
+        let mut r_prime_bytes: [u8; 32] = [0u8; 32];
+        r_prime_bytes.copy_from_slice(&hash(&r_prime.to_bytes().to_vec()));
+        let r_prime_bls_scalar = new_blstrs_scalar(r_prime_bytes);
 
         // Compute H(c2, ctx)
         let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
 
         // H(c2, ctx)^(k_p * r')
-        let sigma = hashed_g1 * (k_p * r_prime);
+        let sigma = hashed_g1 * (k_p * r_prime_bls_scalar);
 
         // PRE Scheme
-        let c3 = gamal::pre_enc(&pk_a.decompress().unwrap(), &r_prime.to_bytes_le().to_vec());
-        let ((u, v), sym_ct, nonce) = c3;
+        let c3 = gamal::pre_elgamal_enc(&pk_a.decompress().unwrap(), &r_prime);
+        let (u, v) = c3;
 
-
-        (G1Compressed { point : sigma.to_compressed() }, (((u.compress(), v.compress()), sym_ct, nonce), *pk_a, ctx.clone()))
+        (G1Compressed { point : sigma.to_compressed() }, ((u.compress(), v.compress()), *pk_a, ctx.clone()))
     }
 
 }
@@ -255,8 +260,7 @@ impl Client {
         let sigma_prime: blstrs::Gt = blstrs::pairing(&blstrs::G1Affine::from_compressed(&sigma.point).unwrap(), &blstrs::G2Affine::from_compressed(&pk_proc.point).unwrap());
 
         // PRE Re-Encryption
-        let (ct, sym_ct, nonce) = c3;
-        let (u, v) = ct;
+        let (u, v) = c3;
         let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
         let (u, v) = c3_prime;
 
@@ -264,7 +268,7 @@ impl Client {
         sigma_prime.compress().unwrap();
 
 
-        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, ((u.compress(), v.compress()), sym_ct.to_vec(), *nonce));
+        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, (u.compress(), v.compress()));
 
 
         report
@@ -358,7 +362,8 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             // Additional Costs
             // (1) Commitment to the Message
             // (2) Moderator masked public key (element of G)
-            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad);
+            // (3) 32 byte commitment randomness
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad) + 32;
 
             println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
         }
@@ -408,7 +413,9 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
             let (c3, epk, ctx) = st.clone();
             
             cost += mem::size_of_val(&epk);
-            cost += gamal::size_of_el_gamal_ct(c3);
+
+            let (u, v) = c3;
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
 
             println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx).unwrap(), &cost);
         }
@@ -469,7 +476,9 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             cost += mem::size_of_val(&sigma);
             cost += mem::size_of_val(&k_r);
             cost += mem::size_of_val(&pk_proc.point);
-            cost += gamal::size_of_el_gamal_ct(c3);
+
+            let (u, v) = c3;
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
 
 
             println!("Received message: {} with cost: {}", message, cost);
@@ -499,7 +508,9 @@ pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, ReportDoc
             
             cost += mem::size_of_val(&*c2);
             cost += mem::size_of_val(&sigma_prime.compress());
-            cost += gamal::size_of_el_gamal_ct(c3_prime);
+
+            let (u, v) = c3_prime;
+            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
 
 
             println!("Generated report for message: {} with cost: {}", message, &cost);

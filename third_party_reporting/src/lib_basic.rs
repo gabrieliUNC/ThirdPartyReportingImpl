@@ -16,7 +16,6 @@ use std::mem;
 use group::*;
 use sha2::{Sha512, Digest};
 
-//type Point = RistrettoPoint;
 type Point = CompressedRistretto;
 type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
@@ -54,7 +53,7 @@ impl Moderator {
         // Verify Point
         let mut maybe_sigma = mac_64_sign(&sk_p, &[&c2[..], &ctx[..]].concat());
         // Point encrypt
-        let maybe_sigma = RistrettoPoint::hash_from_bytes::<Sha512>(&maybe_sigma).to_bytes();
+        let maybe_sigma = RistrettoPoint::from_uniform_bytes(&maybe_sigma).to_bytes();
 
         // Verify Signature
         assert!(maybe_sigma == sigma_pt);
@@ -97,7 +96,7 @@ impl Platform {
         let mut sigma_pt = mac_64_sign(&mac_key_i, &[&c2[..], &ctx[..]].concat());
 
         // Point encrypt
-        let sigma_point = RistrettoPoint::hash_from_bytes::<Sha512>(&sigma_pt);
+        let sigma_point = RistrettoPoint::from_uniform_bytes(&sigma_pt);
         let (u, v) = gamal::elgamal_enc(&mod_pk_i.decompress().unwrap(), &sigma_point);
 
 

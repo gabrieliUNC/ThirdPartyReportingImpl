@@ -8,7 +8,7 @@ use third_party_reporting::lib_common::*;
 use curve25519_dalek::scalar::Scalar;
 
 type Point = CompressedRistretto;
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 
 type ReportDoc = ([u8; 32], Vec<u8>, Vec<u8>, Vec<u8>, Scalar, Ciphertext);

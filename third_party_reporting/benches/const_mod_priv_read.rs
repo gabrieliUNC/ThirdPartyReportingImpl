@@ -9,7 +9,7 @@ use blstrs as blstrs;
 
 type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar, constant_mod_priv::G2Compressed);
-type Ciphertext = ((Point, Point), Vec<u8>, Nonce<U12>);
+type Ciphertext = (Point, Point);
 
 type State = (Ciphertext, Point, Vec<u8>);
 
