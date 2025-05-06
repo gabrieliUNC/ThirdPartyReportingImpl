@@ -10,7 +10,7 @@ type Point = CompressedRistretto;
 type Ciphertext = (Point, Point);
 
 
-pub fn bench_basic_moderate(c: &mut Criterion) {
+pub fn basic_moderate(c: &mut Criterion) {
     // Setup platforms and moderators
     let (platforms, moderators, pks) = basic::test_setup();
 
@@ -58,5 +58,5 @@ pub fn bench_basic_moderate(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_basic_moderate);
+criterion_group!(benches, basic_moderate);
 criterion_main!(benches);

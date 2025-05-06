@@ -14,10 +14,7 @@ use curve25519_dalek::ristretto::{RistrettoPoint, CompressedRistretto};
 use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
 
-use blstrs as blstrs;
-use blst::*;
-use blstrs::{G1Affine, G2Affine, Gt};
-use blstrs::Compress;
+pub use blstrs::{G1Affine, G2Affine, Gt, Compress, GtCompressed};
 use group::{Curve, GroupEncoding};
 use group::prime::PrimeCurveAffine;
 use ff::Field;
@@ -29,7 +26,7 @@ type PublicKey = (Point, Point, Scalar, G2Compressed);
 type Ciphertext = (Point, Point);
 use generic_array::typenum::U12;
 
-type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
+type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::GtCompressed, Ciphertext);
 type ReportDoc = (Vec<u8>, [u8; 32], Vec<u8>, G1Compressed, G2Compressed, Scalar, Ciphertext);
 type State = (Ciphertext, Point, Vec<u8>);
 
@@ -41,6 +38,7 @@ pub struct G1Compressed {
 pub struct G2Compressed {
     point: [u8; 96]
 }
+
 
 
 // Moderator Properties
@@ -102,7 +100,7 @@ impl Moderator {
         assert!(com_open(&c2, message, k_f));
 
         // Verify signature
-        assert!(*sigma_prime == maybe_sigma);
+        assert!(sigma_prime.uncompress().unwrap() == maybe_sigma);
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -264,11 +262,10 @@ impl Client {
         let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
         let (u, v) = c3_prime;
 
-        // compress sigma_prime
-        sigma_prime.compress().unwrap();
 
-
-        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), sigma_prime, (u.compress(), v.compress()));
+        let report: Report = (c2.clone(), *k_f, ctx.to_vec(), 
+            sigma_prime.compress().unwrap()
+                , (u.compress(), v.compress()));
 
 
         report
@@ -507,7 +504,7 @@ pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, ReportDoc
             let mut cost: usize = mem::size_of_val(&k_f);
             
             cost += mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&sigma_prime.compress());
+            cost += mem::size_of_val(&sigma_prime);
 
             let (u, v) = c3_prime;
             cost += mem::size_of_val(&u) + mem::size_of_val(&v);

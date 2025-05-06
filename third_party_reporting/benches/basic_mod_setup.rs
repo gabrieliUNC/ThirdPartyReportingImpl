@@ -3,7 +3,7 @@ use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_common::*;
 
 
-pub fn bench_setup_mod(c: &mut Criterion) {
+pub fn basic_mod_setup(c: &mut Criterion) {
     // One time setup to generate platform needed for mod setup
     let mut platforms: Vec<basic::Platform> = Vec::new();
     for _i in 0..MOD_SCALE.len() {
@@ -19,5 +19,5 @@ pub fn bench_setup_mod(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_setup_mod);
+criterion_group!(benches, basic_mod_setup);
 criterion_main!(benches);

@@ -10,7 +10,7 @@ use blstrs as blstrs;
 type Point = CompressedRistretto;
 type Ciphertext = (Point, Point);
 
-type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
+type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::GtCompressed, Ciphertext);
 
 pub fn bench_const_mod_priv_moderate(c: &mut Criterion) {
     // Setup platforms and moderators
