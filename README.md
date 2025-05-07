@@ -1,5 +1,5 @@
 # Third Party Reporting Implementation
-This is the implementation and benchmarking of [Third Party Reporting](https://github.com/SabaEskandarian/ThirdPartyReporting).
+This is the implementation and benchmarking of Third Party Reporting.
 
 ## Overview
 Each scheme is separated into an individual `lib_{scheme}.rs` file following a common interface as outlined in the above paper. In additition, testing follows a configurable flow that can be used to verify that the scheme works with an arbitrary number of clients, moderators, and message sizes. Benchmarking is done through [Criterion](https://github.com/bheisler/criterion.rs) for each method from each of the schemes and is also parameterized by the same variables as testing. 
