@@ -98,7 +98,6 @@ pub fn test() {
 pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
     println!("======================== Started Testing Moderator Privacy Scheme ====================");
     println!();
-    println!();
 
     // Initialize Platform
     let mut platform = constant_mod_priv::test_setup_platform();
@@ -128,6 +127,7 @@ pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderator
     constant_mod_priv::test_moderate(num_clients, &reports, &moderators, true);
 
 
+    println!();
     println!("======================== Finished Testing Moderator Privacy Scheme ====================");
     println!();
     println!();
@@ -139,7 +139,6 @@ pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderator
 // and number of moderators
 pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
     println!("======================== Started Testing Moderator Privacy Scheme ====================");
-    println!();
     println!();
 
     // Initialize Platform
@@ -170,6 +169,7 @@ pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
     mod_priv::test_moderate(num_clients, &reports, &moderators, true);
 
 
+    println!();
     println!("======================== Finished Testing Moderator Privacy Scheme ====================");
     println!();
     println!();
@@ -179,7 +179,6 @@ pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
 // number of moderators
 pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
     println!("======================== Started Testing Basic Scheme ====================");
-    println!();
     println!();
 
     // Initialize platform
@@ -210,6 +209,8 @@ pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
     basic::test_basic_moderate(num_clients, &reports, &moderators, true);
 
 
+
+    println!();
     println!("======================== Completed Testing Basic Scheme ====================");
     println!();
     println!();

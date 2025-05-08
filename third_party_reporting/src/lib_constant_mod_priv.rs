@@ -359,10 +359,12 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             // Additional Costs
             // (1) Commitment to the Message
             // (2) Moderator masked public key (element of G)
-            // (3) 32 byte commitment randomness
-            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad) + 32;
+            // (3) 32 byte commitment randomness (k_f)
+            // (4) Scalar in G (32 bytes) (k_r)
+            // (5) Moderator id (4 bytes)
+            let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad) + 32 + 32 + 4;
 
-            println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
+            println!("Sending communication cost: {} (bytes)", &cost);
         }
         c1c2ad.push((c1, c2, ad));
     }
@@ -400,22 +402,6 @@ pub fn test_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec<u8>, 
         let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, ad, &ctx.as_bytes().to_vec());
 
 
-        if print {
-            // Additional Costs
-            // (1) Platform signature (element of G1Affine)
-            // (2) epk (element of G)
-            // (3) c3 (proxy re-encryption el-gamal ct of randomness)
-            let mut cost: usize = mem::size_of_val(&sigma);
-
-            let (c3, epk, ctx) = st.clone();
-            
-            cost += mem::size_of_val(&epk);
-
-            let (u, v) = c3;
-            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
-
-            println!("Adding context: {:?} with cost: {}", String::from_utf8(ctx).unwrap(), &cost);
-        }
 
         sigma_st.push((sigma, st));
     }
@@ -454,31 +440,34 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
         let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            // Additional Costs
+            // Receiving Costs
+            // (1) Moderator epk
+            // (2) randomness for commitment
+            // (3) commitment
+            // (4) platform signature (element of G1)
+            // (5) ke_2 (Scalar)
+            // (6) Moderator id (4 bytes)
+            // (7) c3 (proxy re-encryption of randonness)
+            
+            let (_, epk, __) = st.clone();
+            let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = report.clone();
+            let (u, v) = c3.clone();
+            
+            let mut recv_cost: usize = mem::size_of_val(&epk) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&k_r) + mem::size_of_val(&ad) + mem::size_of_val(&u) + mem::size_of_val(&v);
+
+
+            println!("Receiving communication cost: {} (bytes)", &recv_cost);
+
+            // Receiving Costs
             // (1) Moderator id
             // (2) randomness for commitment
             // (3) commitment
-            // (4) platform signature (element of G1Affine)
+            // (4) platform signature (element of G1)
             // (5) ke_2 (Scalar)
-            // (6) pk_proc (PLatform mod-secret in G2Affine)
-            // (7) c3 (proxy re-encryption of randonness)
+            // (6) c3 (proxy re-encryption of randonness)
             
-            let mut cost: usize = mem::size_of_val(&ad);
-            
-            // ReportDoc cost
-            let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = report.clone();
-            
-            cost += mem::size_of_val(&k_f);
-            cost += mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&sigma);
-            cost += mem::size_of_val(&k_r);
-            cost += mem::size_of_val(&pk_proc.point);
-
-            let (u, v) = c3;
-            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
-
-
-            println!("Received message: {} with cost: {}", message, cost);
+            let mut storage_cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&k_r) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            println!("Storage communication cost: {} (bytes)", &storage_cost);
         }
 
         reports.push((message, ad, report));
@@ -493,25 +482,6 @@ pub fn test_report(num_clients: usize, report_docs: &Vec<(String, u32, ReportDoc
         let (message, moderator_id, rd) = &report_docs[i];
         let report = Client::report_gen(message, rd);
 
-        if print {
-            // Additional Costs
-            // (1) randomness for commitment
-            // (2) commitment to message
-            // (3) pairing signature (sigma' element of Gt)
-            // (4) proxy re-encryption of randomness
-
-            let (c2, k_f, ctx, sigma_prime, c3_prime) = report.clone();
-            let mut cost: usize = mem::size_of_val(&k_f);
-            
-            cost += mem::size_of_val(&*c2);
-            cost += mem::size_of_val(&sigma_prime);
-
-            let (u, v) = c3_prime;
-            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
-
-
-            println!("Generated report for message: {} with cost: {}", message, &cost);
-        }
 
         reports.push((message.clone(), *moderator_id, report));
     }
@@ -528,7 +498,17 @@ pub fn test_moderate(num_clients: usize, reports: &Vec<(String, u32, Report)>, m
         let j = usize::try_from(*moderator_id).unwrap();
         let ctx = Moderator::moderate(&moderators[j].sk_enc, &moderators[j].k, &moderators[j].sk_p, j, &message, &report);
         if print {
-            println!("Moderated message successfully with context: {:?} with cost: {}", ctx, CTX_LEN);
+
+            let (c2, r, ctx, sigma_prime, c3_prime) = report.clone();
+            let (u, v) = c3_prime.clone();
+
+            // Judging communication cost
+            // (1) randomness for commitment
+            // (2) commitment
+            // (3) el gamal ct
+            // (4) sigma
+            let mut judging_cost: usize = mem::size_of_val(&r) + mem::size_of_val(&*c2) + mem::size_of_val(&u) + mem::size_of_val(&v) + mem::size_of_val(&sigma_prime);
+            println!("Moderation communication cost: {} (bytes)", &judging_cost);
         }
     }
 

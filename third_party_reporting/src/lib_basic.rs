@@ -256,12 +256,12 @@ pub fn test_basic_send(num_clients: usize, num_moderators: usize, clients: &Vec<
 
         if print {
             // Additional Costs
-            // (1) Commitment randomness
+            // (1) Commitment randomness (32 bytes)
             // (2) Commitment to the Message
             // (3) Moderator id
-            let mut cost: usize = 32 + mem::size_of_val(&*c2) + mem::size_of_val(&ad);
+            let mut send_cost: usize = 32 + mem::size_of_val(&*c2) + mem::size_of_val(&ad);
 
-            println!("Sent message: {} with communication cost: {}", &ms[i], &cost);
+            println!("Sending communication cost: {} (bytes)", &send_cost);
         }
         c1c2ad.push((c1, c2, ad));
     }
@@ -299,17 +299,6 @@ pub fn test_basic_process(num_clients: usize, msg_size: usize, c1c2ad: &Vec<(Vec
         let (sigma, st) = Platform::process(&platform.k_p, &platform.sk_p, &c1, &c2, *ad, &(ctx.as_bytes().to_vec()));
 
 
-        if print {
-            // Additional Cost
-            // (1) Platform signature
-            // (2) Moderator id
-            let (ctx, ad) = st.clone();
-            let (u, v) = sigma.clone();
-            let mut cost = mem::size_of_val(&u) + mem::size_of_val(&v) + mem::size_of_val(&ad);
-
-            println!("Adding context: {:?} with communication cost: {}", String::from_utf8(ctx).unwrap(), &cost);
-        }
-
         sigma_st.push((sigma, st));
     }
 
@@ -343,23 +332,27 @@ pub fn test_basic_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, u32)>
     for i in 0..num_clients {
         let (c1, c2, _ad) = &c1c2ad[i];
         let (sigma, st) = &sigma_st[i];
+
         let (message, ad, report) = Client::read(&clients[i].msg_key, &pks, &c1, &c2, &sigma, &st);
 
         if print {
-            // Additional Costs
+            let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
+            let (u, v) = ct.clone();
+            // Receiving cost is the inputs to read
             // (1) Moderator id
             // (2) randomness for commitment
             // (3) commitment 
-            // (4) sigma' (el-gamal ct of sigma)
+            // (4) sigma
+            let mut recv_cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            println!("Receiving communication cost: {} (bytes)", &recv_cost);
 
-
-            let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-
-            let mut cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            let (u, v) = ct.clone();
-            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
-
-            println!("Received message: {} with cost: {}", message, &cost);
+            // Storage cost is output of read
+            // (1) Moderator id
+            // (2) randomness for commitment
+            // (3) commitment 
+            // (4) sigma
+            let mut storage_cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            println!("Storage communication cost: {} (bytes)", &storage_cost);
         }
         rds.push((message, ad, report));
     }
@@ -374,22 +367,6 @@ pub fn test_report(num_clients: usize, rds: &Vec<(String, u32, Report)>, print: 
         let (msg, mod_id, rd) = &rds[i];
         let report = Client::report_gen(&msg, &rd);
 
-        if print {
-            // Additional Costs
-            // (1) randomness for commitment
-            // (2) commitment 
-            // (3) sigma' (el-gamal ct of sigma)
-
-
-            let (k_f, c2, _ctx, ct): ([u8; 32], Vec<u8>, Vec<u8>, Ciphertext) = report.clone();
-
-            let mut cost: usize = mem::size_of_val(&k_f) + mem::size_of_val(&*c2);
-            let (u, v) = ct.clone();
-            cost += mem::size_of_val(&u) + mem::size_of_val(&v);
-
-
-            println!("Generated report for message: {} with cost: {}", msg, &cost);
-        }
 
         reports.push((msg.clone(), *mod_id, report));
     }
@@ -405,9 +382,15 @@ pub fn test_basic_moderate(num_clients: usize, reports: &Vec<(String, u32, ([u8;
         let ad = usize::try_from(*ad).unwrap();
         let ctx = Moderator::moderate(&moderators[ad].sk_enc, &moderators[ad].sk_p, &message, &report);
         if print {
-            // cost is at most the size of the ctx
-            // otherwise nothing if the signature does not verify
-            println!("Moderated message successfully with context: {:?} and cost: {}", ctx, CTX_LEN);
+            // Moderation communication cost is inputs to moderate
+            // (1) commitment randomness (32 bytes)
+            // (2) commitment
+            // (3) Moderator id
+            // (4) sigma
+            let (k_f, c2, ctx, sigma) = report.clone();
+            let (u, v) = sigma.clone();
+            let judging_cost: usize = 32 + mem::size_of_val(&ad) + mem::size_of_val(&c2) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            println!("Judging communication cost: {} (bytes)", &judging_cost);
         }
     }
 
