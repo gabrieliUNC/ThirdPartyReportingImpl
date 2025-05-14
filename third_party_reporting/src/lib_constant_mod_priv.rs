@@ -144,7 +144,7 @@ impl Platform {
 
 
     pub fn process(k_p: &blstrs::Scalar, _ks: &Vec<([u8; 32], PublicKey)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (G1Compressed, State) {
-        let pk_a = ad;
+        let epk = ad;
         
         // Make RistrettoPoint to encrypt with elgamal
         let r_prime = RistrettoPoint::random(&mut OsRng);
@@ -161,10 +161,10 @@ impl Platform {
         let sigma = hashed_g1 * (k_p * r_prime_bls_scalar);
 
         // PRE Scheme
-        let c3 = gamal::pre_elgamal_enc(&pk_a.decompress().unwrap(), &r_prime);
+        let c3 = gamal::pre_elgamal_enc(&epk.decompress().unwrap(), &r_prime);
         let (u, v) = c3;
 
-        (G1Compressed { point : sigma.to_compressed() }, ((u.compress(), v.compress()), *pk_a, ctx.clone()))
+        (G1Compressed { point : sigma.to_compressed() }, ((u.compress(), v.compress()), *epk, ctx.clone()))
     }
 
 }
@@ -183,7 +183,7 @@ impl Client {
     }
 
 
-    pub fn ccae_enc(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, k_r: Scalar) -> (Vec<u8>, Vec<u8>) {
+    pub fn ccae_enc(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, ke_2: Scalar) -> (Vec<u8>, Vec<u8>) {
         let k_f: [u8; 32] = mac_keygen(); // franking key or r in H(m, r) for committment
         
         let c2 = com_commit(&k_f, message);
@@ -191,7 +191,7 @@ impl Client {
         let cipher = Aes256Gcm::new(&msg_key);
         let nonce = Aes256Gcm::generate_nonce(&mut rand::rngs::OsRng);
 
-        let payload = bincode::serialize(&(message, moderator_id, k_f, k_r.to_bytes())).expect("");
+        let payload = bincode::serialize(&(message, moderator_id, k_f, ke_2.to_bytes())).expect("");
         let c1_obj = cipher.encrypt(&nonce, payload.as_slice()).unwrap();
         let c1 = bincode::serialize::<(Vec<u8>, Vec<u8>)>(&(c1_obj, nonce.to_vec())).expect("");
 
@@ -208,13 +208,13 @@ impl Client {
         let payload_bytes = cipher.decrypt(&nonce, ct.as_ref()).unwrap();
         let payload = bincode::deserialize::<(&str, u32, [u8; 32], [u8; 32])>(&payload_bytes).unwrap();
 
-        let (message, moderator_id, k_f, k_r) = payload;
-        let k_r = Scalar::from_bytes_mod_order(k_r);
+        let (message, moderator_id, k_f, ke_2) = payload;
+        let ke_2 = Scalar::from_bytes_mod_order(ke_2);
 
         // Verify committment
         assert!(com_open(&c2, message, &k_f));
 
-        (message.to_string(), moderator_id, k_r, k_f)
+        (message.to_string(), moderator_id, ke_2, k_f)
     }
 
     pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: &PublicKey) -> (Vec<u8>, Vec<u8>, Point) {
@@ -222,30 +222,30 @@ impl Client {
 
         // El gamal proxy re-encryption
         let x = Scalar::random(&mut OsRng);
-        let pk_a: Point = (&x * pk1.decompress().unwrap()).compress();
-        let k_r: Scalar = k1_2 * x.invert();
+        let epk: Point = (&x * pk1.decompress().unwrap()).compress();
+        let ke_2: Scalar = k1_2 * x.invert();
 
 
-        let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r);
+        let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, ke_2);
 
-        (c1, c2, (pk_a))
+        (c1, c2, (epk))
     }
   
 
 
     pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &G1Compressed, st: &(Ciphertext, Point, Vec<u8>)) -> (String, u32, ReportDoc) {
-        let (c3, pk_a, ctx) = st;
-        let (message, moderator_id, k_r, k_f) = Self::ccae_dec(msg_key, c1, c2);
+        let (c3, epk, ctx) = st;
+        let (message, moderator_id, ke_2, k_f) = Self::ccae_dec(msg_key, c1, c2);
 
         let (_pk1, pk2, _k1_2, pk_proc) = &pks[usize::try_from(moderator_id).unwrap()];
 
 
         // Ensure this message is reportable
-        assert!((&k_r * pk_a.decompress().unwrap()) == pk2.decompress().unwrap());
+        assert!((&ke_2 * epk.decompress().unwrap()) == pk2.decompress().unwrap());
 
         // Generate report documentation
         let rd: ReportDoc = (c2.clone(), k_f.clone(), ctx.clone(), sigma.clone(), 
-            pk_proc.clone(), k_r, c3.clone());
+            pk_proc.clone(), ke_2, c3.clone());
 
 
         (message, moderator_id, rd)
@@ -254,12 +254,12 @@ impl Client {
 
     // type Report = (Vec<u8>, [u8; 32], Vec<u8>, blstrs::Gt, Ciphertext);
     pub fn report_gen(msg: &String, rd: &ReportDoc) -> Report {
-        let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = rd;
+        let (c2, k_f, ctx, sigma, pk_proc, ke_2, c3) = rd;
         let sigma_prime: blstrs::Gt = blstrs::pairing(&blstrs::G1Affine::from_compressed(&sigma.point).unwrap(), &blstrs::G2Affine::from_compressed(&pk_proc.point).unwrap());
 
         // PRE Re-Encryption
         let (u, v) = c3;
-        let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &k_r);
+        let c3_prime = gamal::pre_re_enc(&(u.decompress().unwrap(), v.decompress().unwrap()), &ke_2);
         let (u, v) = c3_prime;
 
 
@@ -360,7 +360,7 @@ pub fn test_send(num_clients: usize, moderators: &Vec<Moderator>, clients: &Vec<
             // (1) Commitment to the Message
             // (2) Moderator masked public key (element of G)
             // (3) 32 byte commitment randomness (k_f)
-            // (4) Scalar in G (32 bytes) (k_r)
+            // (4) Scalar in G (32 bytes) (ke_2)
             // (5) Moderator id (4 bytes)
             let mut cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&ad) + 32 + 32 + 4;
 
@@ -450,10 +450,10 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             // (7) c3 (proxy re-encryption of randonness)
             
             let (_, epk, __) = st.clone();
-            let (c2, k_f, ctx, sigma, pk_proc, k_r, c3) = report.clone();
+            let (c2, k_f, ctx, sigma, pk_proc, ke_2, c3) = report.clone();
             let (u, v) = c3.clone();
             
-            let mut recv_cost: usize = mem::size_of_val(&epk) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&k_r) + mem::size_of_val(&ad) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            let mut recv_cost: usize = mem::size_of_val(&epk) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&ke_2) + mem::size_of_val(&ad) + mem::size_of_val(&u) + mem::size_of_val(&v);
 
 
             println!("Receiving communication cost: {} (bytes)", &recv_cost);
@@ -466,7 +466,7 @@ pub fn test_read(num_clients: usize, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>, si
             // (5) ke_2 (Scalar)
             // (6) c3 (proxy re-encryption of randonness)
             
-            let mut storage_cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&k_r) + mem::size_of_val(&u) + mem::size_of_val(&v);
+            let mut storage_cost: usize = mem::size_of_val(&ad) + mem::size_of_val(&k_f) + mem::size_of_val(&*c2) + mem::size_of_val(&sigma) + mem::size_of_val(&ke_2) + mem::size_of_val(&u) + mem::size_of_val(&v);
             println!("Storage communication cost: {} (bytes)", &storage_cost);
         }
 

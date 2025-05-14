@@ -107,8 +107,8 @@ impl Platform {
             sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &r_prime_bytes[..], &ctx[..]].concat()));
         }
 
-        let pk = ad.decompress().unwrap();
-        let c3 = gamal::pre_elgamal_enc(&pk, &r_prime);
+        let epk = ad.decompress().unwrap();
+        let c3 = gamal::pre_elgamal_enc(&epk, &r_prime);
         let (u, v) = c3;
 
         let st: ProcessState = ((u.compress(), v.compress()), *ad, ctx.clone());
@@ -169,22 +169,22 @@ impl Client {
     pub fn send(msg_key: &Key<Aes256Gcm>, message: &str, moderator_id: u32, pk_i: &PublicKey) -> (Vec<u8>, Vec<u8>, Point) {
         let (pk1, pk2, k1_2) = pk_i;
         let s: Scalar = Scalar::random(&mut OsRng);
-        let pk = &s * pk1.decompress().unwrap();
+        let epk = &s * pk1.decompress().unwrap();
         let k_r = k1_2 * s.invert();
 
         let (c1, c2) = Self::ccae_enc(msg_key, message, moderator_id, k_r);       
 
-        (c1, c2, pk.compress())
+        (c1, c2, epk.compress())
     }
     
     pub fn read(msg_key: &Key<Aes256Gcm>, pks: &Vec<PublicKey>, c1: &Vec<u8>, c2: &Vec<u8>, sigma: &Vec<u8>, st: &ProcessState) -> (String, u32, ReportDoc) {
-        let (c3, pk, ctx) = st;
+        let (c3, epk, ctx) = st;
         let (message, moderator_id, k_f, k_r) = Self::ccae_dec(msg_key, c1, c2);
 
         let pk2 = pks[usize::try_from(moderator_id).unwrap()].1;
 
         // Ensure this message is reportable
-        assert!((&k_r * pk.decompress().unwrap()) == pk2.decompress().unwrap());
+        assert!((&k_r * epk.decompress().unwrap()) == pk2.decompress().unwrap());
 
         // Sigma For Chosen Moderator
         let l: usize = (moderator_id as usize) * 32;
