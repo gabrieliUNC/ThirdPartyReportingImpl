@@ -10,7 +10,7 @@ opt-level = 3
 opt-level = 3
 
 [dependencies]
-blstrs = { git = "https://github.com/gabrieliUNC/blstrs.git" }
+blstrs = "0.7.1"
 subtle = "2.6"
 serde = "1.0.219"
 aes-gcm = "0.10.3"
