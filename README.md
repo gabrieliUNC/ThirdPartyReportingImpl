@@ -7,7 +7,9 @@ To produce the results shown in the paper, simply give the scripts the correct p
 > The scripts use python3, pandas, and matplotlib. Make sure these are installed to ensure the results are visualized properly.
 
 1. `chmod u+x run.sh`
-2. `./run.sh`
+2. `chmod u+x script.py`
+3. `chmod u+x plots.py`
+4. `./run.sh`
 
 > [!IMPORTANT]
 > Once `run.sh` is called once, you do not need to call it again, unless you want new data from criterion. You can simply call the scripts individually to reproduce the running time table `python3 script.py` and evaluation plots `python3 plots.py`.
