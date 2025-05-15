@@ -15,14 +15,14 @@ pub fn bench_plain_moderate(c: &mut Criterion) {
     }
 
     // Send messages
-    let c1c2s = plain::test_send(&clients, &ms);
+    let c1c2s = plain::test_send(&clients, &ms, false);
 
     // Process messages
     let moderator = plain::Moderator::new();
     let sigmas = plain::test_process(&moderator, &c1c2s);
 
     // Read messages
-    let reports = plain::test_read(&clients, &c1c2s, &sigmas);
+    let reports = plain::test_read(&clients, &c1c2s, &sigmas, false);
 
     let mut group = c.benchmark_group("plain.moderate()");
     for (j, msg_size) in MSG_SIZE_SCALE.iter().enumerate() {

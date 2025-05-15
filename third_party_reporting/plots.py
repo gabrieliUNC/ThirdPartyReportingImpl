@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 ''' Script to make plots for moderator scaling '''
 
-path = "criterion"
+path = "target/criterion"
 dirs = os.listdir(path)
 
 process = {'mod-priv' : {}, 'basic' : {}, 'const-mod-priv' : {}}

@@ -6,6 +6,7 @@ use aes_gcm::{
 use rand::distributions::Alphanumeric; 
 use rand::distributions::DistString;
 use bincode;
+use std::mem;
 
 use crate::lib_common::*;
 
@@ -118,7 +119,7 @@ pub fn test_init_clients(num_clients: usize) -> Vec<Client> {
 }
 
 // send()
-pub fn test_send(senders: &Vec<Client>, ms: &Vec<Vec<String>>) -> Vec<(Vec<u8>, Vec<u8>)> {
+pub fn test_send(senders: &Vec<Client>, ms: &Vec<Vec<String>>, print: bool) -> Vec<(Vec<u8>, Vec<u8>)> {
     let n: usize = senders.len();
     let mut c1c2s: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(n);
     for i in 0..n {
@@ -126,6 +127,18 @@ pub fn test_send(senders: &Vec<Client>, ms: &Vec<Vec<String>>) -> Vec<(Vec<u8>, 
 
         // let (c1, c2, c3) = p::Client::send(&ms[i], senders[i].k_r, &pks, n);
         c1c2s.push((c1, c2));
+    }
+
+    if print {
+        // Message sending Communication cost
+        // (1) commitment
+        // (2) commitment randomness (32 bytes)
+        
+        let (c1, c2) = c1c2s[0].clone();
+
+        let cost: usize = mem::size_of_val(&*c2) + 32;
+        
+        println!("Sending Communication cost: {}", &cost);
     }
 
     c1c2s
@@ -145,7 +158,7 @@ pub fn test_process(moderator: &Moderator, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>) -> V
 }
 
 // receive messages
-pub fn test_read(clients: &Vec<Client>, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>, sigmas: &Vec<Vec<u8>>) -> Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)> {
+pub fn test_read(clients: &Vec<Client>, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>, sigmas: &Vec<Vec<u8>>, print: bool) -> Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)> {
     let n: usize = c1c2s.len();
     let mut reports: Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)> = Vec::with_capacity(n);
 
@@ -155,5 +168,45 @@ pub fn test_read(clients: &Vec<Client>, c1c2s: &Vec<(Vec<u8>, Vec<u8>)>, sigmas:
         reports.push(Client::read(clients[0].k_r, c1.clone(), st.clone()));
     }
 
+    if print {
+        // Receiving Communication cost
+        // (1) Commitment
+        // (2) Commitment randomness (32 bytes)
+        // (3) Sigma
+        let (c1, c2) = c1c2s[0].clone();
+        let sigma = sigmas[0].clone();
+
+        let cost: usize = mem::size_of_val(&*c2) + mem::size_of_val(&*sigma) + 32;
+    
+        println!("Receiving Communication Cost: {}", &cost);
+    }
+
     reports
+}
+
+
+pub fn test_moderate(moderator: &Moderator, reports: &Vec<(String, String, (Vec<u8>, Vec<u8>), Vec<u8>)>, ms: &Vec<Vec<String>>, print: bool) -> Vec<bool> {
+    let n: usize = reports.len();
+    let mut judges: Vec<bool> = Vec::new();
+
+    for i in 0..n {
+        let (m, ctx, rd, sigma) = &reports[i].clone();
+        judges.push(Moderator::moderate(&moderator.k_m, &m, &ctx, rd.clone(), sigma.to_vec()));
+    }
+    
+    if print {
+        // Moderating Communication Cost
+        // (1) Commitment 
+        // (2) Commitment randomness (32 bytes)
+        // (3) sigma
+
+        let (m, ctx, rd, sigma) = &reports[0].clone();
+        let (k_f, c2) = rd.clone();
+
+        let cost: usize = mem::size_of_val(&*k_f) + mem::size_of_val(&*c2) + 32;
+
+        println!("Moderating Communication Cost: {}", &cost);
+    }
+    
+    judges
 }

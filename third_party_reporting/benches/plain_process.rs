@@ -17,7 +17,7 @@ pub fn bench_plain_process(c: &mut Criterion) {
     }
 
     // Send messages
-    let c1c2 = plain::test_send(&clients, &ms);
+    let c1c2 = plain::test_send(&clients, &ms, false);
 
     // Setup Moderator
     let moderator = plain::Moderator::new();

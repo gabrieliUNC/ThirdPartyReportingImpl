@@ -4,10 +4,10 @@ import pandas as pd
 
 ''' Script to make the running time table for Third Party Reporting Schemes '''
 
-path = "criterion"
+path = "target/criterion"
 dirs = os.listdir(path)
 data = {}
-schemes = ['basic', 'mod-priv', 'const-mod-priv']
+schemes = ['basic', 'mod-priv', 'const-mod-priv', 'plain']
 benches = ['send', 'process', 'read', 'report', 'moderate']
 NUM_MODS = '64'
 
@@ -18,7 +18,7 @@ for dir in dirs:
     if scheme in schemes:
         sub_dirs = os.listdir(path + '/' + dir)
         for sub_dir in sub_dirs:
-            if sub_dir == 'report' or NUM_MODS not in sub_dir:
+            if sub_dir == 'report' or ('plain' not in sub_dir and NUM_MODS not in sub_dir):
                 continue
             fname = path + '/' + dir + '/' + sub_dir + '/base/estimates.json'
             f = open(fname, 'r')
@@ -36,7 +36,7 @@ for dir in dirs:
 print('DataFrame output')
 df = pd.DataFrame(data)
 df = df[benches]
-df = df.reindex(['basic', 'mod-priv', 'const-mod-priv'])
+df = df.reindex(['basic', 'mod-priv', 'const-mod-priv', 'plain'])
 print(df)
 print()
 

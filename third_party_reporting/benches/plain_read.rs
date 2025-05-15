@@ -16,7 +16,7 @@ pub fn bench_plain_read(c: &mut Criterion) {
     }
 
     // Send messages
-    let c1c2s = plain::test_send(&clients, &ms);
+    let c1c2s = plain::test_send(&clients, &ms, false);
 
     // Process messages
     let moderator = plain::Moderator::new();
