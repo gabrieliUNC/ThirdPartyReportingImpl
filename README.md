@@ -9,6 +9,9 @@ To produce the results shown in the paper, simply give the scripts the correct p
 1. `chmod u+x run.sh`
 2. `./run.sh`
 
+> [!IMPORTANT]
+> Once `run.sh` is called once, you do not need to call it again, unless you want new data from criterion. You can simply call the scripts individually to produce the running time table `python3 script.py` and evaluation plots `python3 plots.py`.
+
 ## Overview
 Each scheme is separated into an individual `lib_{scheme}.rs` file following a common interface as outlined in the above paper. In additition, testing follows a configurable flow that can be used to verify that the scheme works with an arbitrary number of clients, moderators, and message sizes. Benchmarking is done through [Criterion](https://github.com/bheisler/criterion.rs) for each method from each of the schemes and is also parameterized by the same variables as testing. 
 
