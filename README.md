@@ -5,7 +5,7 @@ This is the implementation and benchmarking of Third Party Reporting.
 To produce the results shown in the paper, simply give the scripts the correct permissions and execute `run.sh`. This will produce the running time and communication cost numbers for each scheme. Each individual benchmark will be called with moderators ranging from 1 to 1000 (which may take a while to run). Following these benchmarks, the running time table and the plots from the evaluation section of the paper will be produced using the 2 python scripts.
 
 1. `chmod u+x run.sh`
-2. ./run.sh
+2. `./run.sh`
 
 ## Overview
 Each scheme is separated into an individual `lib_{scheme}.rs` file following a common interface as outlined in the above paper. In additition, testing follows a configurable flow that can be used to verify that the scheme works with an arbitrary number of clients, moderators, and message sizes. Benchmarking is done through [Criterion](https://github.com/bheisler/criterion.rs) for each method from each of the schemes and is also parameterized by the same variables as testing. 
