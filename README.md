@@ -26,10 +26,10 @@ Options:
       --basic
       --mod-priv
       --const-priv
-      --num-clients <NUM_CLIENTS>        [default: 10]
+      --num-clients <NUM_CLIENTS>        [default: 1]
       --num-moderators <NUM_MODERATORS>  [default: 10]
-      --msg-size <MSG_SIZE>              [default: 10]
-      --test
+      --msg-size <MSG_SIZE>              [default: 100]
+      --test-e2ee
   -h, --help                             Print help
   -V, --version                          Print version
 ```
