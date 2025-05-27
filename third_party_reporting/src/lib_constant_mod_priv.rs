@@ -84,14 +84,10 @@ impl Moderator {
 
         let r_prime = gamal::pre_elgamal_dec(sk_enc, &(u.decompress().unwrap(), v.decompress().unwrap()));
 
-        let mut r_prime_bytes: [u8; 32] = [0u8; 32];
-        r_prime_bytes.copy_from_slice(&hash(&r_prime.to_bytes().to_vec()));
-        let r_prime_bls_scalar = new_blstrs_scalar(r_prime_bytes);
-
-        // Compute H(c2, ctx)
-        let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
-        // H(c2, ctx)^(k*r')
-        let hashed_g1 = hashed_g1 * (*k * r_prime_bls_scalar);
+        // Compute H(c2, r', ctx)
+        let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat(), &[], &[]);
+        // H(c2, r', ctx)^k
+        let hashed_g1 = hashed_g1 * (*k);
 
         let maybe_sigma = blstrs::pairing(&hashed_g1.to_affine(), &blstrs::G2Affine::generator());
 
@@ -148,17 +144,12 @@ impl Platform {
         
         // Make RistrettoPoint to encrypt with elgamal
         let r_prime = RistrettoPoint::random(&mut OsRng);
-        
-        // Make random bytes for bls Scalar
-        let mut r_prime_bytes: [u8; 32] = [0u8; 32];
-        r_prime_bytes.copy_from_slice(&hash(&r_prime.to_bytes().to_vec()));
-        let r_prime_bls_scalar = new_blstrs_scalar(r_prime_bytes);
 
-        // Compute H(c2, ctx)
-        let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &ctx[..]].concat(), &[], &[]);
+        // Compute H(c2, r', ctx)
+        let hashed_g1 = blstrs::G1Projective::hash_to_curve(&[&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat(), &[], &[]);
 
-        // H(c2, ctx)^(k_p * r')
-        let sigma = hashed_g1 * (k_p * r_prime_bls_scalar);
+        // H(c2, r', ctx)^k_p
+        let sigma = hashed_g1 * k_p;
 
         // PRE Scheme
         let c3 = gamal::pre_elgamal_enc(&epk.decompress().unwrap(), &r_prime);

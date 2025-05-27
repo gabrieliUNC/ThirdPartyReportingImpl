@@ -55,14 +55,12 @@ impl Moderator {
         let (u, v) = c3_prime;
 
         let r_prime = gamal::pre_elgamal_dec(&sk_enc, &(u.decompress().unwrap(), v.decompress().unwrap()));
-        // Get hashed bytes
-        let r_prime_bytes = hash(&r_prime.to_bytes().to_vec());
 
         // Verify committment
         assert!(com_open(&c2, message, k_f));
 
         // Verify signature
-        assert!(mac_verify(&sk_p, &[&c2[..], &r_prime_bytes[..], &ctx[..]].concat(), &sigma));
+        assert!(mac_verify(&sk_p, &[&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat(), &sigma));
 
         let ctx_s = std::str::from_utf8(&ctx).unwrap();
         return ctx_s.to_string();
@@ -99,12 +97,9 @@ impl Platform {
         // Get random group element of ristretto group
         let mut r_prime = RistrettoPoint::random(&mut OsRng);
 
-        // Hash to random looking bytes
-        let r_prime_bytes = hash(&r_prime.to_bytes().to_vec());
-
         let mut sigma_pt: Vec<u8> = Vec::<u8>::new();
         for i in 0..ks.len() {
-            sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &r_prime_bytes[..], &ctx[..]].concat()));
+            sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat()));
         }
 
         let epk = ad.decompress().unwrap();
