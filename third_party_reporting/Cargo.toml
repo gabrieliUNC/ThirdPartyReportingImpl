@@ -36,9 +36,9 @@ getrandom = "0.3"
 gnuplot = "0.0.45"
 
 
-[[bench]]
-name = "basic_platform_setup"
-harness = false
+#[[bench]]
+#name = "basic_platform_setup"
+#harness = false
 
 
 [[bench]]
@@ -61,13 +61,13 @@ harness = false
 name = "basic_moderate"
 harness = false
 
-[[bench]]
-name = "mod_priv_platform_setup"
-harness = false
+#[[bench]]
+#name = "mod_priv_platform_setup"
+#harness = false
 
-[[bench]]
-name = "mod_priv_mod_setup"
-harness = false
+#[[bench]]
+#name = "mod_priv_mod_setup"
+#harness = false
 
 [[bench]]
 name = "mod_priv_send"
@@ -89,13 +89,13 @@ harness = false
 name = "mod_priv_moderate"
 harness = false
 
-[[bench]]
-name = "const_mod_priv_platform_setup"
-harness = false
+#[[bench]]
+#name = "const_mod_priv_platform_setup"
+#harness = false
 
-[[bench]]
-name = "const_mod_priv_mod_setup"
-harness = false
+#[[bench]]
+#name = "const_mod_priv_mod_setup"
+#harness = false
 
 [[bench]]
 name = "const_mod_priv_send"
@@ -117,13 +117,13 @@ harness = false
 name = "const_mod_priv_moderate"
 harness = false
 
-[[bench]]
-name = "gamal_bench"
-harness = false
+#[[bench]]
+#name = "gamal_bench"
+#harness = false
 
-[[bench]]
-name = "hmac_bench"
-harness = false
+#[[bench]]
+#name = "hmac_bench"
+#harness = false
 
 [[bench]]
 name = "plain_send"
