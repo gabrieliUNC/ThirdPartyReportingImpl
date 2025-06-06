@@ -2,7 +2,6 @@ use third_party_reporting::lib_basic as basic;
 use third_party_reporting::lib_mod_priv as mod_priv;
 use third_party_reporting::lib_constant_mod_priv as constant_mod_priv;
 use third_party_reporting::lib_plain as plain;
-extern crate cpuprofiler;
 
 use clap::Parser;
 
