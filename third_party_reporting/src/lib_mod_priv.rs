@@ -15,7 +15,6 @@ use curve25519_dalek::scalar::Scalar;
 use group::GroupEncoding;
 use rand::rngs::OsRng;
 
-
 type Point = CompressedRistretto;
 type PublicKey = (Point, Point, Scalar);
 type Ciphertext = (Point, Point);
@@ -96,10 +95,12 @@ impl Platform {
     pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (Vec<u8>, ProcessState) {
         // Get random group element of ristretto group
         let mut r_prime = RistrettoPoint::random(&mut OsRng);
-
+        
+        let to_sign = [&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat();
+        
         let mut sigma_pt: Vec<u8> = Vec::<u8>::new();
         for i in 0..ks.len() {
-            sigma_pt.extend(&mac_sign(&ks[i].0, &[&c2[..], &(r_prime.to_bytes().to_vec()[..]), &ctx[..]].concat()));
+            sigma_pt.extend(&mac_sign(&ks[i].0, &to_sign));
         }
 
         let epk = ad.decompress().unwrap();
@@ -107,7 +108,6 @@ impl Platform {
         let (u, v) = c3;
 
         let st: ProcessState = ((u.compress(), v.compress()), *ad, ctx.clone());
-
 
         (sigma_pt, st)
     }

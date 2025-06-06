@@ -5,6 +5,7 @@ use third_party_reporting::lib_mod_priv as mod_priv;
 use third_party_reporting::lib_common::*;
 use curve25519_dalek::ristretto::CompressedRistretto;
 
+
 type Point = CompressedRistretto;
 
 pub fn process(platform: &mod_priv::Platform, c1c2ad: &Vec<(Vec<u8>, Vec<u8>, Point)>) {
