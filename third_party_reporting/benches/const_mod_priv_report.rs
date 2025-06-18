@@ -62,7 +62,7 @@ pub fn bench_const_mod_priv_report(c: &mut Criterion) {
 
 criterion_group!{
     name = benches;
-    config = Criterion::default().significance_level(0.1).sample_size(500);
+    config = Criterion::default().significance_level(0.01).sample_size(5000);
     targets = bench_const_mod_priv_report
 }
 criterion_main!(benches);
