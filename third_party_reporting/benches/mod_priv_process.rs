@@ -41,5 +41,9 @@ pub fn bench_mod_priv_process(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_mod_priv_process);
+
+criterion_group!{
+    name=benches;
+    config=Criterion::default().significance_level(0.1).sample_size(500);
+    targets=bench_mod_priv_process}
 criterion_main!(benches);
