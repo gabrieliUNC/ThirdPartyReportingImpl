@@ -85,6 +85,8 @@ df = pd.DataFrame(mod_priv)
 df = df[benches]
 df = df.sort_index()
 df.index.name = 'x'
+# Collected Data for Table but only want to plot by interval of 100
+df.drop(index = [2, 64], inplace = True)
 df.to_csv('mod-priv.csv')
 print(df)
 print()
@@ -103,6 +105,8 @@ df = pd.DataFrame(const_mod_priv)
 df = df[benches]
 df = df.sort_index()
 df.index.name = 'x'
+# Collected Data for Table but only want to plot by interval of 100
+df.drop(index = [2, 64], inplace = True)
 df.to_csv('const-priv.csv')
 print(df)
 print()
@@ -121,6 +125,8 @@ print()
 df = pd.DataFrame(process)
 df = df.sort_index()
 df.index.name = 'x'
+# Collected Data for Table but only want to plot by interval of 100
+df.drop(index = [2, 64], inplace = True)
 df.to_csv('process.csv')
 print(df)
 print()
