@@ -85,12 +85,6 @@ impl Platform {
         }
     }
 
-    pub fn setup_platform(&mut self) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        self.k_p = None;
-        self.k_reg = None;
-
-        (self.k_p.clone(), self.k_reg.clone())
-    }
 
     pub fn process(_k_p: &Option<Vec<u8>>, ks: &Vec<([u8; 32], Point)>, _c1: &Vec<u8>, c2: &Vec<u8>, ad: &Point, ctx: &Vec<u8>) -> (Vec<u8>, ProcessState) {
         // Get random group element of ristretto group

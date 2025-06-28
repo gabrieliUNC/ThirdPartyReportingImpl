@@ -78,7 +78,8 @@ impl Moderator {
         }
     }
 
-    pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, _sk_p: &[u8; 32], _moderator_id: usize, message: &str, report: &Report) -> String {
+    // sk_mod = (sk_enc, k)
+    pub fn moderate(sk_enc: &Scalar, k: &blstrs::Scalar, _sk_p: &[u8; 32], message: &str, report: &Report) -> String {
         let (c2, r, ctx, sigma_prime, c3_prime) = report;
         let (u, v) = c3_prime;
 
@@ -487,7 +488,7 @@ pub fn test_moderate(num_clients: usize, reports: &Vec<(String, u32, Report)>, m
     for i in 0..num_clients {
         let (message, moderator_id, report) = &reports[i];
         let j = usize::try_from(*moderator_id).unwrap();
-        let ctx = Moderator::moderate(&moderators[j].sk_enc, &moderators[j].k, &moderators[j].sk_p, j, &message, &report);
+        let ctx = Moderator::moderate(&moderators[j].sk_enc, &moderators[j].k, &moderators[j].sk_p, &message, &report);
         if print {
 
             let (c2, r, ctx, sigma_prime, c3_prime) = report.clone();
