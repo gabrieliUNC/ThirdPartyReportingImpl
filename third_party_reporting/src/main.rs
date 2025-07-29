@@ -21,7 +21,7 @@ struct Args {
     #[arg(long, default_value_t = 1)]
     num_clients: usize,
 
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 1)]
     num_moderators: usize,
 
     #[arg(long, default_value_t = 100)]
@@ -86,7 +86,7 @@ pub fn test_e2ee(num_clients: usize, msg_size: usize) {
 
 
     println!();
-    println!("======================== Finished Testing Plain Franking Scheme ====================");
+    println!("======================== Finished Testing Plain Franking Scheme with ====================");
     println!();
 
 }
@@ -95,7 +95,7 @@ pub fn test_e2ee(num_clients: usize, msg_size: usize) {
 // Method for running the constant moderator privacy scheme flow with variable number of clients, msg sizes
 // and number of moderators
 pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
-    println!("======================== Started Testing Moderator Privacy Scheme ====================");
+    println!("======================== Started Testing Constant Moderator Privacy Scheme with {} moderators ====================", num_moderators);
     println!();
 
     // Initialize Platform
@@ -127,7 +127,7 @@ pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderator
 
 
     println!();
-    println!("======================== Finished Testing Moderator Privacy Scheme ====================");
+    println!("======================== Finished Testing Constant Moderator Privacy Scheme with {} moderators ====================", num_moderators);
     println!();
     println!();
 
@@ -137,7 +137,7 @@ pub fn test_constant_mod_priv(num_clients: usize, msg_size: usize, num_moderator
 // Method for running the moderator privacy scheme flow with variable number of clients, msg sizes
 // and number of moderators
 pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
-    println!("======================== Started Testing Moderator Privacy Scheme ====================");
+    println!("======================== Started Testing Moderator Privacy Scheme with {} moderators ====================", num_moderators);
     println!();
 
     // Initialize Platform
@@ -169,7 +169,7 @@ pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
 
 
     println!();
-    println!("======================== Finished Testing Moderator Privacy Scheme ====================");
+    println!("======================== Finished Testing Moderator Privacy Scheme with {} moderators ====================", num_moderators);
     println!();
     println!();
 }
@@ -177,7 +177,7 @@ pub fn test_priv(num_clients: usize, msg_size: usize, num_moderators: usize) {
 // Method for running the whole basic scheme flow with variable number of clients / msgs sent, msg_size, and 
 // number of moderators
 pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
-    println!("======================== Started Testing Basic Scheme ====================");
+    println!("======================== Started Testing Basic Scheme with {} moderators ====================", num_moderators);
     println!();
 
     // Initialize platform
@@ -210,7 +210,7 @@ pub fn test_basic(num_clients: usize, msg_size: usize, num_moderators: usize) {
 
 
     println!();
-    println!("======================== Completed Testing Basic Scheme ====================");
+    println!("======================== Completed Testing Basic Scheme with {} moderators ====================", num_moderators);
     println!();
     println!();
 }
