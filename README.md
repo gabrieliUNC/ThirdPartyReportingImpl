@@ -12,7 +12,7 @@ To produce the results shown in the paper, simply give the scripts the correct p
 4. `./run.sh`
 
 > [!IMPORTANT]
-> Once `run.sh` is called once, you do not need to call it again, unless you want new data from criterion. You can simply call the scripts individually to reproduce the running time table `python3 script.py` and evaluation plots `python3 plots.py`.
+> `cargo bench` must be run once in its entirety to produce the data which the scripts rely on to generate the results. Executing `run.sh` calls cargo bench, so once `run.sh` is called, you do not need to call it again, unless you want new data from criterion. You can simply call the scripts individually to reproduce the running time table `python3 script.py` and evaluation plots `python3 plots.py` once criterion has run all benchmarks and stored the results locally.
 
 ## Overview
 Each scheme is separated into an individual `lib_{scheme}.rs` file following a common interface as outlined in the above paper. In additition, testing follows a configurable flow that can be used to verify that the scheme works with an arbitrary number of clients, moderators, and message sizes. Benchmarking is done through [Criterion](https://github.com/bheisler/criterion.rs) for each method from each of the schemes and is also parameterized by the same variables as testing. 
