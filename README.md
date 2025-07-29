@@ -2,7 +2,7 @@
 This is the implementation and benchmarking of Third Party Reporting.
 
 ## Produce Results
-To produce the results shown in the paper, simply give the scripts the correct permissions and execute `run.sh`. This will produce the running time and communication cost numbers for each scheme. Each individual benchmark will be called with a range of moderators (which may take a while to run). Following these benchmarks, the running time table and the plots from the evaluation section of the paper will be produced using the 2 python scripts. These have been compuled into 1 shell script for ease of use (`run.sh`).
+To produce the results shown in the paper, simply give the scripts the correct permissions and execute `run.sh`. This will produce the running time and communication cost numbers for each scheme. Each individual benchmark will be called with a range of moderators (which may take a while to run). Following these benchmarks, the running time table and the plots from the evaluation section of the paper will be produced using the 2 python scripts. These have been compiled into 1 shell script for ease of use (`run.sh`).
 > [!NOTE]  
 > The scripts use python3, pandas, and matplotlib. Make sure these are installed to ensure the results are visualized properly.
 
