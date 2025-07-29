@@ -27,7 +27,7 @@ Options:
       --mod-priv
       --const-priv
       --num-clients <NUM_CLIENTS>        [default: 1]
-      --num-moderators <NUM_MODERATORS>  [default: 10]
+      --num-moderators <NUM_MODERATORS>  [default: 1]
       --msg-size <MSG_SIZE>              [default: 100]
       --test-e2ee
   -h, --help                             Print help
